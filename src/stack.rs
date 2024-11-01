@@ -1,12 +1,12 @@
 struct Stack {
-    size: i32,
+    size: u16,
     top: i32,
     arr: Vec<[u8; 32]>,
 }
 
 impl Stack {
     fn new(s: Option<u16>) -> Self {
-        Self { size: s.unwrap_or(1024).into(), top: -1, arr: Vec::<[u8; 32]>::new() }
+        Self { size: s.unwrap_or(1024), top: -1, arr: Vec::<[u8; 32]>::new() }
     }
 
     fn pop(&mut self) -> Result<[u8; 32], &str> {
@@ -17,7 +17,7 @@ impl Stack {
     }
 
     fn push(&mut self, value: [u8; 32]) -> Result<i32, &str> {
-        match self.top == self.size - 1 {
+        match self.top + 1 == self.size.into() {
             true => Err("Stack is full"),
             false => { self.top += 1; self.arr.push(value); Ok(self.top) },
         }
