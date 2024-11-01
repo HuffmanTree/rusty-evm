@@ -1,3 +1,4 @@
+mod memory;
 mod stack;
 
 fn main() {

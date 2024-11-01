@@ -1,0 +1,72 @@
+struct Memory {
+    arr: Vec<u8>,
+}
+
+impl Memory {
+    fn new() -> Self {
+        Self { arr: Vec::<u8>::new() }
+    }
+
+    fn extension_cost(extension_size: usize) -> usize {
+        let memory_size_word = (extension_size + 31) / 32;
+        memory_size_word.pow(2) / 512 + (3 * memory_size_word)
+    }
+
+    fn store(&mut self, offset: usize, value: Vec<u8>) -> (usize, usize) {
+        let mut extension_size = 0_usize;
+        if self.arr.is_empty() {
+            self.arr = vec![0; 32];
+            extension_size = 32;
+        }
+        if self.arr.len() < offset + value.len() {
+            let s = offset + value.len() - self.arr.len();
+            self.arr.append(&mut vec![0; s]);
+            extension_size += s;
+        }
+        for (i, v) in value.iter().enumerate() {
+            self.arr[offset + i] = v.clone();
+        }
+        (extension_size, Memory::extension_cost(extension_size))
+    }
+
+    fn load(&self, offset: usize) -> [u8; 32] {
+        let mut res = [0_u8; 32];
+        let mut i = 0_usize;
+
+        while (i < res.len()) && (offset + i < self.arr.len()) {
+            res[i] = self.arr[offset + i];
+            i += 1;
+        }
+
+        res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allocates_32_bytes_if_memory_is_empty() {
+        let mut memory = Memory::new();
+
+        assert_eq!(memory.arr.len(), 0);
+        assert_eq!(memory.store(4, vec![4, 5, 6, 7]), (32, 3));
+        assert_eq!(memory.arr, vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn allocates_the_necessary() {
+        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+
+        assert_eq!(memory.store(30, vec![30, 31, 32, 33]), (2, 3));
+        assert_eq!(memory.arr, vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 31, 32, 33]);
+    }
+
+    #[test]
+    fn loads_32_bytes_padded_with_zeros() {
+        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+
+        assert_eq!(memory.load(6), [6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+}
