@@ -18,10 +18,10 @@ impl Stack {
         }
     }
 
-    fn push(&mut self, value: u256) -> Result<i32, &str> {
+    fn push(&mut self, value: u256) -> Result<(), &str> {
         match self.top + 1 == self.size.into() {
             true => Err("Stack overflow"),
-            false => { self.top += 1; self.arr.push(value); Ok(self.top) },
+            false => { self.top += 1; self.arr.push(value); Ok(()) },
         }
     }
 }
@@ -59,7 +59,7 @@ mod tests {
     fn pushes_to_the_stack() {
         let mut stack = Stack { size: 1, top: -1, arr: vec!() };
 
-        assert_eq!(stack.push(uint!("7")), Ok(0));
+        assert_eq!(stack.push(uint!("7")), Ok(()));
         assert_eq!(stack.size, 1);
         assert_eq!(stack.top, 0);
         assert_eq!(stack.arr, vec!(uint!("7")));
