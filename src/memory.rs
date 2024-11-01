@@ -1,3 +1,5 @@
+use ethnum::u256;
+
 struct Memory {
     arr: Vec<u8>,
 }
@@ -29,12 +31,16 @@ impl Memory {
         (extension_size, Memory::extension_cost(extension_size))
     }
 
-    fn load(&self, offset: usize) -> [u8; 32] {
-        let mut res = [0_u8; 32];
+    fn load(&self, offset: usize) -> u256 {
+        let mut res = u256::from(0_u8);
         let mut i = 0_usize;
 
-        while (i < res.len()) && (offset + i < self.arr.len()) {
-            res[i] = self.arr[offset + i];
+        while i < 32 {
+            res <<= 8;
+            res |= u256::from(match self.arr.get(offset + i) {
+                Some(v) => v.clone(),
+                None => 0,
+            });
             i += 1;
         }
 
@@ -45,6 +51,7 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethnum::uint;
 
     #[test]
     fn allocates_32_bytes_if_memory_is_empty() {
@@ -67,6 +74,6 @@ mod tests {
     fn loads_32_bytes_padded_with_zeros() {
         let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
 
-        assert_eq!(memory.load(6), [6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(memory.load(6), uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
     }
 }
