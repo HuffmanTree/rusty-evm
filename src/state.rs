@@ -147,11 +147,25 @@ impl State {
     }
 
     fn addmod(&mut self) -> Result<TransitionOutput, &str> {
-        todo!();
+        let (a, b, n) = match (self.stack.pop(), self.stack.pop(), self.stack.pop()) {
+            (Some(x), Some(y), Some(n)) => (x, y, n),
+            _ => return Err("Stack is empty"),
+        };
+        match self.stack.push(if n == 0 { u256::from(0_u8) } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }) {
+            Ok(_) => Ok(TransitionOutput { cost: 8, jump: 1 }),
+            Err(s) => Err(s),
+        }
     }
 
     fn mulmod(&mut self) -> Result<TransitionOutput, &str> {
-        todo!();
+        let (a, b, n) = match (self.stack.pop(), self.stack.pop(), self.stack.pop()) {
+            (Some(x), Some(y), Some(n)) => (x, y, n),
+            _ => return Err("Stack is empty"),
+        };
+        match self.stack.push(if n == 0 { u256::from(0_u8) } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }) {
+            Ok(_) => Ok(TransitionOutput { cost: 8, jump: 1 }),
+            Err(s) => Err(s),
+        }
     }
 }
 
@@ -458,5 +472,98 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.sdiv(), Err("Stack is empty"));
+    }
+
+    #[test]
+    fn adds_modulo() {
+        let mut state = State::new();
+        state.stack.push(uint!("8")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.addmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("4")));
+
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.addmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("3")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD")).unwrap();
+
+        assert_eq!(state.addmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.addmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("6")));
+    }
+
+    #[test]
+    fn add_modulo_by_zero_returns_zero_by_convention() {
+        let mut state = State::new();
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("6")).unwrap();
+        state.stack.push(uint!("4")).unwrap();
+
+        assert_eq!(state.addmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+    }
+
+    #[test]
+    fn fails_to_add_modulo_if_not_enough_items() {
+        let mut state = State::new();
+
+        assert_eq!(state.addmod(), Err("Stack is empty"));
+    }
+
+    #[test]
+    fn multiplies_modulo() {
+        let mut state = State::new();
+        state.stack.push(uint!("8")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.mulmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("4")));
+
+        state.stack.push(uint!("12")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.mulmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("9")));
+
+        state.stack.push(uint!("3")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD")).unwrap();
+
+        assert_eq!(state.mulmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("2")));
+    }
+
+    #[test]
+    fn multiply_modulo_by_zero_returns_zero_by_convention() {
+        let mut state = State::new();
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("6")).unwrap();
+        state.stack.push(uint!("4")).unwrap();
+
+        assert_eq!(state.mulmod(), Ok(TransitionOutput { cost: 8, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+    }
+
+    #[test]
+    fn fails_to_multiply_modulo_if_not_enough_items() {
+        let mut state = State::new();
+
+        assert_eq!(state.mulmod(), Err("Stack is empty"));
     }
 }
