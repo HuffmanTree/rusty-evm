@@ -7,18 +7,18 @@ pub struct Stack {
 }
 
 impl Stack {
-    fn new(s: Option<u16>) -> Self {
+    pub fn new(s: Option<u16>) -> Self {
         Self { size: s.unwrap_or(1024), top: -1, arr: Vec::<u256>::new() }
     }
 
-    fn pop(&mut self) -> Option<u256> {
+    pub fn pop(&mut self) -> Option<u256> {
         match self.arr.pop() {
             Option::None => None,
             Option::Some(elt) => { self.top -= 1; Some(elt) },
         }
     }
 
-    fn push(&mut self, value: u256) -> Result<(), &str> {
+    pub fn push(&mut self, value: u256) -> Result<(), &str> {
         match self.top + 1 == self.size.into() {
             true => Err("Stack overflow"),
             false => { self.top += 1; self.arr.push(value); Ok(()) },
