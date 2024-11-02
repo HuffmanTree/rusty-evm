@@ -17,6 +17,10 @@ trait WrappingSignedRem {
     fn wrapping_signed_rem(&self, rhs: Self) -> Self;
 }
 
+trait NeededSizeInBytes {
+    fn needed_size_in_bytes(self) -> u32;
+}
+
 impl IsNeg for u256 {
     fn is_neg(&self) -> bool {
         (self & u256::from_str_hex("0x8000000000000000000000000000000000000000000000000000000000000000").unwrap()) != 0
@@ -26,6 +30,17 @@ impl IsNeg for u256 {
 impl Abs for u256 {
     fn abs(&self) -> Self {
         if self.is_neg() { self.wrapping_neg() } else { self.clone() }
+    }
+}
+
+impl NeededSizeInBytes for u32 {
+    fn needed_size_in_bytes(mut self) -> u32 {
+        let mut n = 0_u32;
+        while self != 0 {
+            self >>= 8;
+            n += 1;
+        }
+        n
     }
 }
 
@@ -167,12 +182,43 @@ impl State {
             Err(s) => Err(s),
         }
     }
+
+    fn exp(&mut self) -> Result<TransitionOutput, &str> {
+        let (a, e) = match (self.stack.pop(), self.stack.pop()) {
+            (Some(x), Some(y)) => (x, y),
+            _ => return Err("Stack is empty"),
+        };
+        let e: u32 = match e.try_into() {
+            Ok(x) => x,
+            _ => return Err("Exponent too large"),
+        };
+        match self.stack.push(a.wrapping_pow(e)) {
+            Ok(_) => Ok(TransitionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), jump: 1 }),
+            Err(s) => Err(s),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use ethnum::uint;
+
+    #[test]
+    fn u32_needed_size_in_bytes() {
+        assert_eq!(0_u32.needed_size_in_bytes(), 0);
+        assert_eq!(1_u32.needed_size_in_bytes(), 1);
+        assert_eq!(2_u32.needed_size_in_bytes(), 1);
+
+        assert_eq!(126_u32.needed_size_in_bytes(), 1);
+        assert_eq!(127_u32.needed_size_in_bytes(), 1);
+        assert_eq!(128_u32.needed_size_in_bytes(), 1);
+
+        assert_eq!(254_u32.needed_size_in_bytes(), 1);
+        assert_eq!(255_u32.needed_size_in_bytes(), 1);
+        assert_eq!(256_u32.needed_size_in_bytes(), 2);
+        assert_eq!(257_u32.needed_size_in_bytes(), 2);
+    }
 
     #[test]
     fn u256_is_neg() {
@@ -565,5 +611,46 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.mulmod(), Err("Stack is empty"));
+    }
+
+    #[test]
+    fn exponentiates() {
+        let mut state = State::new();
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 60, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("100")));
+
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 60, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("4")));
+
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("5")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 10, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 60, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1024")));
+
+        state.stack.push(uint!("260")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 110, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+    }
+
+    #[test]
+    fn fails_to_exponentiate_if_not_enough_items() {
+        let mut state = State::new();
+
+        assert_eq!(state.exp(), Err("Stack is empty"));
     }
 }
