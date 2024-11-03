@@ -197,6 +197,26 @@ impl State {
             Err(s) => Err(s),
         }
     }
+
+    fn signextend(&mut self) -> Result<TransitionOutput, &str> {
+        let (b, x) = match (self.stack.pop(), self.stack.pop()) {
+            (Some(x), Some(y)) => (x, y),
+            _ => return Err("Stack is empty"),
+        };
+        let b: u32 = match b.try_into() {
+            Ok(x) => x,
+            _ => return Err("Size too large"),
+        };
+        let mask = u256::from(1_u8).wrapping_shl((b + 1).wrapping_shl(3));
+        let sign_mask = mask.wrapping_shr(1);
+        let size_mask = mask - 1;
+        let value = x & size_mask;
+
+        match self.stack.push(if (value & sign_mask) != 0 { !size_mask | value } else { value }) {
+            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
+            Err(s) => Err(s),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -652,5 +672,34 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.exp(), Err("Stack is empty"));
+    }
+
+    #[test]
+    fn sign_extends() {
+        let mut state = State::new();
+        state.stack.push(uint!("0x41")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEF41")));
+    }
+
+    #[test]
+    fn fails_to_sign_extend_if_not_enough_items() {
+        let mut state = State::new();
+
+        assert_eq!(state.signextend(), Err("Stack is empty"));
     }
 }
