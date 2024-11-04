@@ -1,4 +1,4 @@
-use ethnum::u256;
+use ethnum::{u256, U256};
 use crate::stack::Stack;
 
 trait IsNeg {
@@ -65,6 +65,12 @@ struct State {
     stop_flag: bool,
 }
 
+struct TransitionFunctionOutput<const O: usize> {
+    cost: u32,
+    result: [u256; O],
+    jump: usize,
+}
+
 #[derive(Debug,PartialEq,Eq)]
 struct TransitionOutput {
     cost: u32,
@@ -79,143 +85,86 @@ impl State {
         }
     }
 
-    fn stop(&mut self) -> Result<TransitionOutput, &str> {
+    fn stop(&mut self) -> Result<TransitionOutput, ()> {
         self.stop_flag = true;
         Ok(TransitionOutput { cost: 0, jump: 0 })
     }
 
-    fn add(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
+    fn transition_builder<F, const I: usize, const O: usize>(&mut self, f: F) -> Result<TransitionOutput, String> where F: Fn([u256; I]) -> Result<TransitionFunctionOutput<O>, String> {
+        let mut input = [U256::ZERO; I];
+        for i in 0..I {
+            input[i] = match self.stack.pop() {
+                Some(x) => x,
+                _ => return Err("Stack is empty".to_string()),
+            }
         };
-        match self.stack.push(a.wrapping_add(b)) {
-            Ok(_) => Ok(TransitionOutput { cost: 3, jump: 1 }),
-            Err(s) => Err(s),
+        let output = match f(input) {
+            Ok(y) => y,
+            Err(s) => return Err(s),
+        };
+        for o in 0..O {
+            if let Err(e) = self.stack.push(output.result[o]) {
+                return Err(e.to_string());
+            }
         }
+        Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
-    fn mul(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(a.wrapping_mul(b)) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn add(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a.wrapping_add(b)], jump: 1 }))
     }
 
-    fn sub(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(a.wrapping_sub(b)) {
-            Ok(_) => Ok(TransitionOutput { cost: 3, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn mul(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [a.wrapping_mul(b)], jump: 1 }))
     }
 
-    fn div(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if b == 0 { u256::from(0_u8) } else { a.wrapping_div(b) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn sub(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a.wrapping_sub(b)], jump: 1 }))
     }
 
-    fn sdiv(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if b == 0 { u256::from(0_u8) } else { a.wrapping_signed_div(b) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn div(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_div(b) }], jump: 1 }))
     }
 
-    fn r#mod(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if b == 0 { u256::from(0_u8) } else { a.wrapping_rem(b) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn sdiv(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_signed_div(b) }], jump: 1 }))
     }
 
-    fn smod(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if b == 0 { u256::from(0_u8) } else { a.wrapping_signed_rem(b) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn r#mod(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_rem(b) }], jump: 1 }))
     }
 
-    fn addmod(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b, n) = match (self.stack.pop(), self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y), Some(n)) => (x, y, n),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if n == 0 { u256::from(0_u8) } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 8, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn smod(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_signed_rem(b) }], jump: 1 }))
     }
 
-    fn mulmod(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, b, n) = match (self.stack.pop(), self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y), Some(n)) => (x, y, n),
-            _ => return Err("Stack is empty"),
-        };
-        match self.stack.push(if n == 0 { u256::from(0_u8) } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }) {
-            Ok(_) => Ok(TransitionOutput { cost: 8, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn addmod(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 }))
     }
 
-    fn exp(&mut self) -> Result<TransitionOutput, &str> {
-        let (a, e) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        let e: u32 = match e.try_into() {
-            Ok(x) => x,
-            _ => return Err("Exponent too large"),
-        };
-        match self.stack.push(a.wrapping_pow(e)) {
-            Ok(_) => Ok(TransitionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn mulmod(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 }))
     }
 
-    fn signextend(&mut self) -> Result<TransitionOutput, &str> {
-        let (b, x) = match (self.stack.pop(), self.stack.pop()) {
-            (Some(x), Some(y)) => (x, y),
-            _ => return Err("Stack is empty"),
-        };
-        let b: u32 = match b.try_into() {
-            Ok(x) => x,
-            _ => return Err("Size too large"),
-        };
-        let mask = u256::from(1_u8).wrapping_shl((b + 1).wrapping_shl(3));
-        let sign_mask = mask.wrapping_shr(1);
-        let size_mask = mask - 1;
-        let value = x & size_mask;
+    fn exp(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, e]: [u256; 2]| match TryInto::<u32>::try_into(e) {
+            Ok(e) => Ok(TransitionFunctionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), result: [a.wrapping_pow(e)], jump: 1 }),
+            _ => Err("Exponent too large".to_string()),
+        })
+    }
 
-        match self.stack.push(if (value & sign_mask) != 0 { !size_mask | value } else { value }) {
-            Ok(_) => Ok(TransitionOutput { cost: 5, jump: 1 }),
-            Err(s) => Err(s),
-        }
+    fn signextend(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[b, x]: [u256; 2]| match TryInto::<u32>::try_into(b) {
+            Ok(b) => {
+                let mask = U256::ONE.wrapping_shl((b + 1).wrapping_shl(3));
+                let sign_mask = mask.wrapping_shr(1);
+                let size_mask = mask - 1;
+                let value = x & size_mask;
+
+                Ok(TransitionFunctionOutput { cost: 5, result: [if (value & sign_mask) != 0 { !size_mask | value } else { value }], jump: 1 })
+            },
+            _ => Err("Size too large".to_string()),
+        })
     }
 }
 
@@ -223,6 +172,33 @@ impl State {
 mod tests {
     use super::*;
     use ethnum::uint;
+
+    #[test]
+    fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |input: [u256; 1]| Result::<TransitionFunctionOutput<1>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
+        ), Err("Stack is empty".to_string()));
+    }
+
+    #[test]
+    fn transition_builder_fails_if_transition_function_fails() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |_input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Fail".to_string())
+        ), Err("Fail".to_string()));
+    }
+
+    #[test]
+    fn transition_builder_fails_if_too_much_outputs() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |_input: [u256; 0]| Result::<TransitionFunctionOutput<1025>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
+        ), Err("Stack overflow".to_string()));
+    }
 
     #[test]
     fn u32_needed_size_in_bytes() {
@@ -313,7 +289,7 @@ mod tests {
     fn fails_to_add_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.add(), Err("Stack is empty"));
+        assert_eq!(state.add(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -343,7 +319,7 @@ mod tests {
     fn fails_to_multiply_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.mul(), Err("Stack is empty"));
+        assert_eq!(state.mul(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -373,7 +349,7 @@ mod tests {
     fn fails_to_subtract_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.sub(), Err("Stack is empty"));
+        assert_eq!(state.sub(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -403,7 +379,7 @@ mod tests {
     fn fails_to_divide_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.div(), Err("Stack is empty"));
+        assert_eq!(state.div(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -449,7 +425,7 @@ mod tests {
     fn fails_to_sign_divide_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.sdiv(), Err("Stack is empty"));
+        assert_eq!(state.sdiv(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -479,7 +455,7 @@ mod tests {
     fn fails_to_take_the_reminder_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.r#mod(), Err("Stack is empty"));
+        assert_eq!(state.r#mod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -537,7 +513,7 @@ mod tests {
     fn fails_to_sign_rem_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.sdiv(), Err("Stack is empty"));
+        assert_eq!(state.smod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -587,7 +563,7 @@ mod tests {
     fn fails_to_add_modulo_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.addmod(), Err("Stack is empty"));
+        assert_eq!(state.addmod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -630,7 +606,7 @@ mod tests {
     fn fails_to_multiply_modulo_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.mulmod(), Err("Stack is empty"));
+        assert_eq!(state.mulmod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -671,7 +647,7 @@ mod tests {
     fn fails_to_exponentiate_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.exp(), Err("Stack is empty"));
+        assert_eq!(state.exp(), Err("Stack is empty".to_string()));
     }
 
     #[test]
@@ -700,6 +676,6 @@ mod tests {
     fn fails_to_sign_extend_if_not_enough_items() {
         let mut state = State::new();
 
-        assert_eq!(state.signextend(), Err("Stack is empty"));
+        assert_eq!(state.signextend(), Err("Stack is empty".to_string()));
     }
 }
