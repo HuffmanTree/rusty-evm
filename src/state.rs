@@ -1,4 +1,4 @@
-use ethnum::u256;
+use ethnum::{u256, U256};
 use crate::stack::Stack;
 
 trait IsNeg {
@@ -65,6 +65,12 @@ struct State {
     stop_flag: bool,
 }
 
+struct TransitionFunctionOutput<const O: usize> {
+    cost: u32,
+    result: [u256; O],
+    jump: usize,
+}
+
 #[derive(Debug,PartialEq,Eq)]
 struct TransitionOutput {
     cost: u32,
@@ -79,9 +85,29 @@ impl State {
         }
     }
 
-    fn stop(&mut self) -> Result<TransitionOutput, &str> {
+    fn stop(&mut self) -> Result<TransitionOutput, ()> {
         self.stop_flag = true;
         Ok(TransitionOutput { cost: 0, jump: 0 })
+    }
+
+    fn transition_builder<F, const I: usize, const O: usize>(&mut self, f: F) -> Result<TransitionOutput, String> where F: Fn([u256; I]) -> Result<TransitionFunctionOutput<O>, String> {
+        let mut input = [U256::ZERO; I];
+        for i in 0..I {
+            input[i] = match self.stack.pop() {
+                Some(x) => x,
+                _ => return Err("Stack is empty".to_string()),
+            }
+        };
+        let output = match f(input) {
+            Ok(y) => y,
+            Err(s) => return Err(s),
+        };
+        for o in 0..O {
+            if let Err(e) = self.stack.push(output.result[o]) {
+                return Err(e.to_string());
+            }
+        }
+        Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
     fn add(&mut self) -> Result<TransitionOutput, &str> {
@@ -223,6 +249,33 @@ impl State {
 mod tests {
     use super::*;
     use ethnum::uint;
+
+    #[test]
+    fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |input: [u256; 1]| Result::<TransitionFunctionOutput<1>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
+        ), Err("Stack is empty".to_string()));
+    }
+
+    #[test]
+    fn transition_builder_fails_if_transition_function_fails() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |_input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Fail".to_string())
+        ), Err("Fail".to_string()));
+    }
+
+    #[test]
+    fn transition_builder_fails_if_too_much_outputs() {
+        let mut state = State::new();
+
+        assert_eq!(state.transition_builder(
+            |_input: [u256; 0]| Result::<TransitionFunctionOutput<1025>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
+        ), Err("Stack overflow".to_string()));
+    }
 
     #[test]
     fn u32_needed_size_in_bytes() {
