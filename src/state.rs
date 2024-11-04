@@ -166,6 +166,38 @@ impl State {
             _ => Err("Size too large".to_string()),
         })
     }
+
+    fn lt(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a < b { U256::ONE } else { U256::ZERO }], jump: 1 }))
+    }
+
+    fn gt(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a > b { U256::ONE } else { U256::ZERO }], jump: 1 }))
+    }
+
+    fn slt(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (a.is_neg(), b.is_neg()) {
+            (true, false) => { U256::ONE },
+            (false, true) => { U256::ZERO },
+            _ => if a < b { U256::ONE } else { U256::ZERO },
+        }], jump: 1 }))
+    }
+
+    fn sgt(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (a.is_neg(), b.is_neg()) {
+            (true, false) => { U256::ZERO },
+            (false, true) => { U256::ONE },
+            _ => if a > b { U256::ONE } else { U256::ZERO },
+        }], jump: 1 }))
+    }
+
+    fn eq(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a == b { U256::ONE } else { U256::ZERO }], jump: 1 }))
+    }
+
+    fn iszero(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[a]: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [if a == U256::ZERO { U256::ONE } else { U256::ZERO }], jump: 1 }))
+    }
 }
 
 #[cfg(test)]
@@ -677,5 +709,125 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.signextend(), Err("Stack is empty".to_string()));
+    }
+
+    #[test]
+    fn compare_values() {
+        let mut state = State::new();
+        assert_eq!(state.lt(), Err("Stack is empty".to_string()));
+        assert_eq!(state.gt(), Err("Stack is empty".to_string()));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("9")).unwrap();
+
+        assert_eq!(state.lt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.lt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("9")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.gt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.gt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.eq(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("3")).unwrap();
+
+        assert_eq!(state.eq(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.iszero(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("3")).unwrap();
+
+        assert_eq!(state.iszero(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+    }
+
+    #[test]
+    fn compare_signed_values() {
+        let mut state = State::new();
+        assert_eq!(state.slt(), Err("Stack is empty".to_string()));
+        assert_eq!(state.sgt(), Err("Stack is empty".to_string()));
+
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.slt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.slt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.slt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.slt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.slt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.sgt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.sgt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.sgt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.sgt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("10")).unwrap();
+
+        assert_eq!(state.sgt(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
     }
 }
