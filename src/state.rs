@@ -218,6 +218,20 @@ impl State {
     fn byte(&mut self) -> Result<TransitionOutput, String> {
         self.transition_builder(|[i, x]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if i > 31 { U256::ZERO } else { (x >> (8 * (31 - i))) & 0xFF }], jump: 1 }))
     }
+
+    fn shl(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u32>::try_into(shift) {
+            Ok(shift) => value.wrapping_shl(shift),
+            _ => U256::ZERO,
+        }], jump: 1 }))
+    }
+
+    fn shr(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u32>::try_into(shift) {
+            Ok(shift) => value.wrapping_shr(shift),
+            _ => U256::ZERO,
+        }], jump: 1 }))
+    }
 }
 
 #[cfg(test)]
@@ -859,6 +873,8 @@ mod tests {
         assert_eq!(state.xor(), Err("Stack is empty".to_string()));
         assert_eq!(state.not(), Err("Stack is empty".to_string()));
         assert_eq!(state.byte(), Err("Stack is empty".to_string()));
+        assert_eq!(state.shr(), Err("Stack is empty".to_string()));
+        assert_eq!(state.shl(), Err("Stack is empty".to_string()));
 
         state.stack.push(uint!("0xFF")).unwrap();
         state.stack.push(uint!("0xFF")).unwrap();
@@ -953,5 +969,29 @@ mod tests {
 
         assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0x34")));
+
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.shl(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("2")));
+
+        state.stack.push(uint!("0xFF00000000000000000000000000000000000000000000000000000000000000")).unwrap();
+        state.stack.push(uint!("4")).unwrap();
+
+        assert_eq!(state.shl(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xF000000000000000000000000000000000000000000000000000000000000000")));
+
+        state.stack.push(uint!("2")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.shr(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("0xFF")).unwrap();
+        state.stack.push(uint!("4")).unwrap();
+
+        assert_eq!(state.shr(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x0F")));
     }
 }
