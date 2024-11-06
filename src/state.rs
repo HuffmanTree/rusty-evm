@@ -214,6 +214,10 @@ impl State {
     fn not(&mut self) -> Result<TransitionOutput, String> {
         self.transition_builder(|[a]: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [!a], jump: 1 }))
     }
+
+    fn byte(&mut self) -> Result<TransitionOutput, String> {
+        self.transition_builder(|[i, x]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if i > 31 { U256::ZERO } else { (x >> (8 * (31 - i))) & 0xFF }], jump: 1 }))
+    }
 }
 
 #[cfg(test)]
@@ -854,6 +858,7 @@ mod tests {
         assert_eq!(state.or(), Err("Stack is empty".to_string()));
         assert_eq!(state.xor(), Err("Stack is empty".to_string()));
         assert_eq!(state.not(), Err("Stack is empty".to_string()));
+        assert_eq!(state.byte(), Err("Stack is empty".to_string()));
 
         state.stack.push(uint!("0xFF")).unwrap();
         state.stack.push(uint!("0xFF")).unwrap();
@@ -912,5 +917,41 @@ mod tests {
 
         assert_eq!(state.not(), Ok(TransitionOutput { cost: 3, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("16")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("31")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xF0")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("15")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("32")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("28")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xCD")));
+
+        state.stack.push(uint!("0x0112233445566778899AABBCCDDEEFF0")).unwrap();
+        state.stack.push(uint!("19")).unwrap();
+
+        assert_eq!(state.byte(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x34")));
     }
 }
