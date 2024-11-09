@@ -1,80 +1,10 @@
-use ethnum::{u256, U256};
+use ethnum::U256;
 use crate::stack::Stack;
-
-trait IsNeg {
-    fn is_neg(&self) -> bool;
-}
-
-trait Abs {
-    fn abs(&self) -> Self;
-}
-
-trait WrappingSignedDiv {
-    fn wrapping_signed_div(&self, rhs: Self) -> Self;
-}
-
-trait WrappingSignedRem {
-    fn wrapping_signed_rem(&self, rhs: Self) -> Self;
-}
-
-trait NeededSizeInBytes {
-    fn needed_size_in_bytes(self) -> u32;
-}
-
-impl IsNeg for u256 {
-    fn is_neg(&self) -> bool {
-        (self & u256::from_str_hex("0x8000000000000000000000000000000000000000000000000000000000000000").unwrap()) != 0
-    }
-}
-
-impl Abs for u256 {
-    fn abs(&self) -> Self {
-        if self.is_neg() { self.wrapping_neg() } else { self.clone() }
-    }
-}
-
-impl NeededSizeInBytes for u32 {
-    fn needed_size_in_bytes(mut self) -> u32 {
-        let mut n = 0_u32;
-        while self != 0 {
-            self >>= 8;
-            n += 1;
-        }
-        n
-    }
-}
-
-impl WrappingSignedDiv for u256 {
-    fn wrapping_signed_div(&self, rhs: Self) -> Self {
-        let negate = self.is_neg() ^ rhs.is_neg();
-        let res = self.abs().wrapping_div(rhs.abs());
-        if negate { res.wrapping_neg() } else { res }
-    }
-}
-
-impl WrappingSignedRem for u256 {
-    fn wrapping_signed_rem(&self, rhs: Self) -> Self {
-        let negate = self.is_neg();
-        let res = self.abs().wrapping_rem(rhs.abs());
-        if negate { res.wrapping_neg() } else { res }
-    }
-}
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MOD, MUL, MULMOD, NOT, OR, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
     stop_flag: bool,
-}
-
-struct TransitionFunctionOutput<const O: usize> {
-    cost: u32,
-    result: [u256; O],
-    jump: usize,
-}
-
-#[derive(Debug,PartialEq,Eq)]
-struct TransitionOutput {
-    cost: u32,
-    jump: usize,
 }
 
 impl State {
@@ -90,7 +20,7 @@ impl State {
         Ok(TransitionOutput { cost: 0, jump: 0 })
     }
 
-    fn transition_builder<F, const I: usize, const O: usize>(&mut self, f: F) -> Result<TransitionOutput, String> where F: Fn([u256; I]) -> Result<TransitionFunctionOutput<O>, String> {
+    fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
         let mut input = [U256::ZERO; I];
         for i in 0..I {
             input[i] = match self.stack.pop() {
@@ -110,143 +40,39 @@ impl State {
         Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
-    fn add(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a.wrapping_add(b)], jump: 1 }))
-    }
-
-    fn mul(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [a.wrapping_mul(b)], jump: 1 }))
-    }
-
-    fn sub(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a.wrapping_sub(b)], jump: 1 }))
-    }
-
-    fn div(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_div(b) }], jump: 1 }))
-    }
-
-    fn sdiv(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_signed_div(b) }], jump: 1 }))
-    }
-
-    fn r#mod(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_rem(b) }], jump: 1 }))
-    }
-
-    fn smod(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_signed_rem(b) }], jump: 1 }))
-    }
-
-    fn addmod(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 }))
-    }
-
-    fn mulmod(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 }))
-    }
-
-    fn exp(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, e]: [u256; 2]| match TryInto::<u32>::try_into(e) {
-            Ok(e) => Ok(TransitionFunctionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), result: [a.wrapping_pow(e)], jump: 1 }),
-            _ => Err("Exponent too large".to_string()),
-        })
-    }
-
-    fn signextend(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[b, x]: [u256; 2]| match TryInto::<u32>::try_into(b) {
-            Ok(b) => {
-                let mask = U256::ONE.wrapping_shl((b + 1).wrapping_shl(3));
-                let sign_mask = mask.wrapping_shr(1);
-                let size_mask = mask - 1;
-                let value = x & size_mask;
-
-                Ok(TransitionFunctionOutput { cost: 5, result: [if (value & sign_mask) != 0 { !size_mask | value } else { value }], jump: 1 })
-            },
-            _ => Err("Size too large".to_string()),
-        })
-    }
-
-    fn lt(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a < b { U256::ONE } else { U256::ZERO }], jump: 1 }))
-    }
-
-    fn gt(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a > b { U256::ONE } else { U256::ZERO }], jump: 1 }))
-    }
-
-    fn slt(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (a.is_neg(), b.is_neg()) {
-            (true, false) => { U256::ONE },
-            (false, true) => { U256::ZERO },
-            _ => if a < b { U256::ONE } else { U256::ZERO },
-        }], jump: 1 }))
-    }
-
-    fn sgt(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (a.is_neg(), b.is_neg()) {
-            (true, false) => { U256::ZERO },
-            (false, true) => { U256::ONE },
-            _ => if a > b { U256::ONE } else { U256::ZERO },
-        }], jump: 1 }))
-    }
-
-    fn eq(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a == b { U256::ONE } else { U256::ZERO }], jump: 1 }))
-    }
-
-    fn iszero(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a]: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [if a == U256::ZERO { U256::ONE } else { U256::ZERO }], jump: 1 }))
-    }
-
-    fn and(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a & b], jump: 1 }))
-    }
-
-    fn or(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a | b], jump: 1 }))
-    }
-
-    fn xor(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [a ^ b], jump: 1 }))
-    }
-
-    fn not(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[a]: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [!a], jump: 1 }))
-    }
-
-    fn byte(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[i, x]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if i > 31 { U256::ZERO } else { (x >> (8 * (31 - i))) & 0xFF }], jump: 1 }))
-    }
-
-    fn shl(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u8>::try_into(shift) {
-            Ok(shift) => value.wrapping_shl(shift.into()),
-            _ => U256::ZERO,
-        }], jump: 1 }))
-    }
-
-    fn shr(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u8>::try_into(shift) {
-            Ok(shift) => value.wrapping_shr(shift.into()),
-            _ => U256::ZERO,
-        }], jump: 1 }))
-    }
-
-    fn sar(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (TryInto::<u8>::try_into(shift), value.is_neg()) {
-            (Ok(shift), false) => value.wrapping_shr(shift.into()),
-            (Ok(shift), true) => { if shift == 0 { value } else { !(U256::ONE.wrapping_shl((255 - shift + 1).into()) - 1) | value.wrapping_shr(shift.into()) } },
-            (Err(_), false) => U256::ZERO,
-            (Err(_), true) => U256::MAX,
-        }], jump: 1 }))
-    }
+    fn add(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADD) }
+    fn mul(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MUL) }
+    fn sub(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SUB) }
+    fn div(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(DIV) }
+    fn sdiv(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SDIV) }
+    fn r#mod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MOD) }
+    fn smod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SMOD) }
+    fn addmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADDMOD) }
+    fn mulmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MULMOD) }
+    fn exp(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EXP) }
+    fn signextend(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SIGNEXTEND) }
+    fn lt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(LT) }
+    fn gt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(GT) }
+    fn slt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLT) }
+    fn sgt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SGT) }
+    fn eq(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EQ) }
+    fn iszero(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ISZERO) }
+    fn and(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(AND) }
+    fn or(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(OR) }
+    fn xor(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(XOR) }
+    fn not(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(NOT) }
+    fn byte(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(BYTE) }
+    fn shl(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHL) }
+    fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR) }
+    fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR) }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::transitions::TransitionFunctionOutput;
+
     use super::*;
-    use ethnum::uint;
+    use ethnum::{uint,u256};
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
@@ -273,60 +99,6 @@ mod tests {
         assert_eq!(state.transition_builder(
             |_input: [u256; 0]| Result::<TransitionFunctionOutput<1025>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
         ), Err("Stack overflow".to_string()));
-    }
-
-    #[test]
-    fn u32_needed_size_in_bytes() {
-        assert_eq!(0_u32.needed_size_in_bytes(), 0);
-        assert_eq!(1_u32.needed_size_in_bytes(), 1);
-        assert_eq!(2_u32.needed_size_in_bytes(), 1);
-
-        assert_eq!(126_u32.needed_size_in_bytes(), 1);
-        assert_eq!(127_u32.needed_size_in_bytes(), 1);
-        assert_eq!(128_u32.needed_size_in_bytes(), 1);
-
-        assert_eq!(254_u32.needed_size_in_bytes(), 1);
-        assert_eq!(255_u32.needed_size_in_bytes(), 1);
-        assert_eq!(256_u32.needed_size_in_bytes(), 2);
-        assert_eq!(257_u32.needed_size_in_bytes(), 2);
-    }
-
-    #[test]
-    fn u256_is_neg() {
-        assert!(!uint!("6").is_neg());
-        assert!(!uint!("10").is_neg());
-
-        assert!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE").is_neg());
-        assert!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").is_neg());
-    }
-
-    #[test]
-    fn u256_abs() {
-        assert_eq!(uint!("6").abs(), uint!("6"));
-        assert_eq!(uint!("10").abs(), uint!("10"));
-
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE").abs(), uint!("2"));
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").abs(), uint!("1"));
-    }
-
-    #[test]
-    #[should_panic(expected = "attempt to divide by zero")]
-    fn u256_wrapping_signed_div() {
-        assert_eq!(uint!("4").wrapping_signed_div(uint!("2")), uint!("2"));
-        assert_eq!(uint!("4").wrapping_signed_div(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE"));
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC").wrapping_signed_div(uint!("2")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE"));
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC").wrapping_signed_div(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")), uint!("2"));
-        uint!("4").wrapping_signed_div(uint!("0"));
-    }
-
-    #[test]
-    #[should_panic(expected = "attempt to calculate the remainder with a divisor of zero")]
-    fn u256_wrapping_signed_rem() {
-        assert_eq!(uint!("5").wrapping_signed_rem(uint!("2")), uint!("1"));
-        assert_eq!(uint!("5").wrapping_signed_rem(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")), uint!("1"));
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB").wrapping_signed_rem(uint!("2")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
-        assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB").wrapping_signed_rem(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
-        uint!("5").wrapping_signed_rem(uint!("0"));
     }
 
     #[test]
