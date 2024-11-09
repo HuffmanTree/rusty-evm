@@ -7,8 +7,8 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub fn new(s: Option<u16>) -> Self {
-        Self { size: s.unwrap_or(1024), top: -1, arr: Vec::<u256>::new() }
+    pub fn new() -> Self {
+        Self { size: 1024, top: -1, arr: Vec::<u256>::new() }
     }
 
     pub fn pop(&mut self) -> Option<u256> {
@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn fail_to_pop_from_an_empty_stack() {
-        let mut stack = Stack::new(Option::None);
+        let mut stack = Stack::new();
 
         assert_eq!(stack.pop(), None);
     }
@@ -50,8 +50,11 @@ mod tests {
 
     #[test]
     fn fail_to_push_to_an_already_full_stack() {
-        let mut stack = Stack::new(Option::Some(0));
+        let mut stack = Stack::new();
 
+        for _ in 0..1024 {
+            assert_eq!(stack.push(uint!("7")), Ok(()));
+        }
         assert_eq!(stack.push(uint!("7")), Err("Stack overflow"));
     }
 

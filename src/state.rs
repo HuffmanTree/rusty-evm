@@ -80,7 +80,7 @@ struct TransitionOutput {
 impl State {
     fn new() -> Self {
         Self {
-            stack: Stack::new(Option::None),
+            stack: Stack::new(),
             stop_flag: false,
         }
     }
