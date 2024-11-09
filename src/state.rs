@@ -488,6 +488,24 @@ mod tests {
 
         assert_eq!(state.exp(), Ok(TransitionOutput { cost: 110, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0")));
+
+        state.stack.push(uint!("3")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 60, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xFFFFFFFFFFFFFFFD0000000000000002FFFFFFFFFFFFFFFF")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFF0")).unwrap();
+        state.stack.push(uint!("3")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 410, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xE9377A20E36295B65EA7F55D4A333F73CF25A1BE32FEBCF9702BDE500F57B8C1")));
+
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFF0FFFFFF")).unwrap();
+        state.stack.push(uint!("5")).unwrap();
+
+        assert_eq!(state.exp(), Ok(TransitionOutput { cost: 560, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x49E63006C06484CE7E18DB842AD1771FC1C83AA03B09227A2EB3765958CCCCCD")));
     }
 
     #[test]

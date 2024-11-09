@@ -10,7 +10,9 @@ pub trait WrappingSignedDiv { fn wrapping_signed_div(&self, rhs: Self) -> Self; 
 
 pub trait WrappingSignedRem { fn wrapping_signed_rem(&self, rhs: Self) -> Self; }
 
-impl NeededSizeInBytes for u32 {
+pub trait WrappingBigPow { fn wrapping_big_pow(&self, e: u256) -> u256; }
+
+impl NeededSizeInBytes for u256 {
     fn needed_size_in_bytes(mut self) -> u32 {
         let mut n = 0_u32;
         while self != 0 {
@@ -49,6 +51,19 @@ impl WrappingSignedRem for u256 {
     }
 }
 
+impl WrappingBigPow for u256 {
+    fn wrapping_big_pow(&self, e: u256) -> u256 {
+        match TryInto::<u32>::try_into(e) {
+            Ok(e) => self.wrapping_pow(e),
+            _ => {
+                let ep = e.div_euclid(u32::MAX.into());
+                let r: u32 = e.rem_euclid(u32::MAX.into()).try_into().unwrap();
+                self.wrapping_pow(u32::MAX.into()).wrapping_big_pow(ep).wrapping_mul(self.wrapping_pow(r))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,18 +71,16 @@ mod tests {
 
     #[test]
     fn u32_needed_size_in_bytes() {
-        assert_eq!(0_u32.needed_size_in_bytes(), 0);
-        assert_eq!(1_u32.needed_size_in_bytes(), 1);
-        assert_eq!(2_u32.needed_size_in_bytes(), 1);
-
-        assert_eq!(126_u32.needed_size_in_bytes(), 1);
-        assert_eq!(127_u32.needed_size_in_bytes(), 1);
-        assert_eq!(128_u32.needed_size_in_bytes(), 1);
-
-        assert_eq!(254_u32.needed_size_in_bytes(), 1);
-        assert_eq!(255_u32.needed_size_in_bytes(), 1);
-        assert_eq!(256_u32.needed_size_in_bytes(), 2);
-        assert_eq!(257_u32.needed_size_in_bytes(), 2);
+        assert_eq!(uint!("0").needed_size_in_bytes(), 0);
+        assert_eq!(uint!("1").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("2").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("126").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("127").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("128").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("254").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("255").needed_size_in_bytes(), 1);
+        assert_eq!(uint!("256").needed_size_in_bytes(), 2);
+        assert_eq!(uint!("257").needed_size_in_bytes(), 2);
     }
 
     #[test]
@@ -106,5 +119,12 @@ mod tests {
         assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB").wrapping_signed_rem(uint!("2")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
         assert_eq!(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB").wrapping_signed_rem(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
         uint!("5").wrapping_signed_rem(uint!("0"));
+    }
+
+    #[test]
+    fn u256_wrapping_big_pow() {
+        assert_eq!(uint!("2").wrapping_big_pow(uint!("3")), uint!("8"));
+        assert_eq!(uint!("5").wrapping_big_pow(uint!("20")), uint!("95367431640625"));
+        assert_eq!(uint!("3").wrapping_big_pow(uint!("95367431640625")), uint!("0x44E51AFABFFC26671C3EC521656015E130346F0C26FE984F672212FD2EF68943"));
     }
 }

@@ -1,5 +1,5 @@
 use ethnum::{u256,U256};
-use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem};
+use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
 
 type TransitionFunctionInput<const I: usize> = [u256; I];
 
@@ -26,10 +26,7 @@ pub static MOD: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFunc
 pub static SMOD: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 5, result: [if b == 0 { U256::ZERO } else { a.wrapping_signed_rem(b) }], jump: 1 });
 pub static ADDMOD: TransitionFunction<3, 1> = |[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 });
 pub static MULMOD: TransitionFunction<3, 1> = |[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 });
-pub static EXP: TransitionFunction<2, 1> = |[a, e]: [u256; 2]| match TryInto::<u32>::try_into(e) {
-    Ok(e) => Ok(TransitionFunctionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), result: [a.wrapping_pow(e)], jump: 1 }),
-    _ => Err("Exponent too large".to_string()),
-};
+pub static EXP: TransitionFunction<2, 1> = |[a, e]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), result: [a.wrapping_big_pow(e)], jump: 1 });
 pub static SIGNEXTEND: TransitionFunction<2, 1> = |[b, x]: [u256; 2]| match TryInto::<u32>::try_into(b) {
     Ok(b) => {
         let mask = U256::ONE.wrapping_shl((b + 1).wrapping_shl(3));
