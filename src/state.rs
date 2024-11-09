@@ -28,10 +28,7 @@ impl State {
                 _ => return Err("Stack is empty".to_string()),
             }
         };
-        let output = match f(input) {
-            Ok(y) => y,
-            Err(s) => return Err(s),
-        };
+        let output = f(input);
         for o in 0..O {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
@@ -79,17 +76,8 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |input: [u256; 1]| Result::<TransitionFunctionOutput<1>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
+            |input: [u256; 1]| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }
         ), Err("Stack is empty".to_string()));
-    }
-
-    #[test]
-    fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new();
-
-        assert_eq!(state.transition_builder(
-            |_input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Fail".to_string())
-        ), Err("Fail".to_string()));
     }
 
     #[test]
@@ -97,7 +85,7 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |_input: [u256; 0]| Result::<TransitionFunctionOutput<1025>, String>::Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
+            |_input: [u256; 0]| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }
         ), Err("Stack overflow".to_string()));
     }
 
