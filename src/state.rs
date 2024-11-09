@@ -220,15 +220,15 @@ impl State {
     }
 
     fn shl(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u32>::try_into(shift) {
-            Ok(shift) => value.wrapping_shl(shift),
+        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u8>::try_into(shift) {
+            Ok(shift) => value.wrapping_shl(shift.into()),
             _ => U256::ZERO,
         }], jump: 1 }))
     }
 
     fn shr(&mut self) -> Result<TransitionOutput, String> {
-        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u32>::try_into(shift) {
-            Ok(shift) => value.wrapping_shr(shift),
+        self.transition_builder(|[shift, value]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match TryInto::<u8>::try_into(shift) {
+            Ok(shift) => value.wrapping_shr(shift.into()),
             _ => U256::ZERO,
         }], jump: 1 }))
     }
