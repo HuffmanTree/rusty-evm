@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use ethnum::{u256,U256};
 use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
 
@@ -27,17 +29,14 @@ pub static SMOD: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFun
 pub static ADDMOD: TransitionFunction<3, 1> = |[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_add(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 });
 pub static MULMOD: TransitionFunction<3, 1> = |[a, b, n]: [u256; 3]| Ok(TransitionFunctionOutput { cost: 8, result: [if n == 0 { U256::ZERO } else { a.wrapping_rem(n).wrapping_mul(b.wrapping_rem(n)).wrapping_rem(n) }], jump: 1 });
 pub static EXP: TransitionFunction<2, 1> = |[a, e]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 10 + 50 * e.needed_size_in_bytes(), result: [a.wrapping_big_pow(e)], jump: 1 });
-pub static SIGNEXTEND: TransitionFunction<2, 1> = |[b, x]: [u256; 2]| match TryInto::<u32>::try_into(b) {
-    Ok(b) => {
-        let mask = U256::ONE.wrapping_shl((b + 1).wrapping_shl(3));
-        let sign_mask = mask.wrapping_shr(1);
-        let size_mask = mask - 1;
-        let value = x & size_mask;
-
-        Ok(TransitionFunctionOutput { cost: 5, result: [if (value & sign_mask) != 0 { !size_mask | value } else { value }], jump: 1 })
-    },
-    _ => Err("Size too large".to_string()),
-};
+pub static SIGNEXTEND: TransitionFunction<2, 1> = |[b, x]: [u256; 2]| {
+    let b: u32 = min(b, u256::from(30_u32)).try_into().unwrap();
+    let mask = U256::ONE.wrapping_shl((b + 1).wrapping_shl(3));
+    let sign_mask = mask.wrapping_shr(1);
+    let size_mask = mask - 1;
+    let value = x & size_mask;
+    Ok(TransitionFunctionOutput { cost: 5, result: [if (value & sign_mask) != 0 { !size_mask | value } else { value }], jump: 1 })}
+;
 pub static LT: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a < b { U256::ONE } else { U256::ZERO }], jump: 1 });
 pub static GT: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [if a > b { U256::ONE } else { U256::ZERO }], jump: 1 });
 pub static SLT: TransitionFunction<2, 1> = |[a, b]: [u256; 2]| Ok(TransitionFunctionOutput { cost: 3, result: [match (a.is_neg(), b.is_neg()) {

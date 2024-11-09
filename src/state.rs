@@ -535,6 +535,30 @@ mod tests {
 
         assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEF41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xEF41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("30")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xEF41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("31")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xEF41")));
+
+        state.stack.push(uint!("0xEF41")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
+
+        assert_eq!(state.signextend(), Ok(TransitionOutput { cost: 5, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xEF41")));
     }
 
     #[test]
