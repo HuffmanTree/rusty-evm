@@ -93,7 +93,7 @@ mod tests {
     use ethnum::uint;
 
     #[test]
-    fn u32_needed_size_in_bytes() {
+    fn u256_needed_size_in_bytes() {
         assert_eq!(uint!("0").needed_size_in_bytes(), 0);
         assert_eq!(uint!("1").needed_size_in_bytes(), 1);
         assert_eq!(uint!("2").needed_size_in_bytes(), 1);
