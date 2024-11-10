@@ -1,16 +1,23 @@
 use ethnum::U256;
+use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MOD, MUL, MULMOD, NOT, OR, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
+    memory: Memory,
     stop_flag: bool,
+}
+
+struct TransitionBuilderOptions {
+    memory_access: bool,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             stack: Stack::new(),
+            memory: Memory::new(),
             stop_flag: false,
         }
     }
@@ -20,7 +27,8 @@ impl State {
         Ok(TransitionOutput { cost: 0, jump: 0 })
     }
 
-    fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
+    fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>, options: Option<TransitionBuilderOptions>) -> Result<TransitionOutput, String> {
+        let options = options.unwrap_or(TransitionBuilderOptions { memory_access: false });
         let mut input = [U256::ZERO; I];
         for i in 0..I {
             input[i] = match self.stack.pop() {
@@ -28,7 +36,7 @@ impl State {
                 _ => return Err("Stack is empty".to_string()),
             }
         };
-        let output = f(input);
+        let output = f(input, if options.memory_access { Some(&mut self.memory) } else { None });
         for o in 0..O {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
@@ -37,31 +45,31 @@ impl State {
         Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
-    fn add(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADD) }
-    fn mul(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MUL) }
-    fn sub(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SUB) }
-    fn div(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(DIV) }
-    fn sdiv(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SDIV) }
-    fn r#mod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MOD) }
-    fn smod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SMOD) }
-    fn addmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADDMOD) }
-    fn mulmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MULMOD) }
-    fn exp(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EXP) }
-    fn signextend(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SIGNEXTEND) }
-    fn lt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(LT) }
-    fn gt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(GT) }
-    fn slt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLT) }
-    fn sgt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SGT) }
-    fn eq(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EQ) }
-    fn iszero(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ISZERO) }
-    fn and(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(AND) }
-    fn or(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(OR) }
-    fn xor(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(XOR) }
-    fn not(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(NOT) }
-    fn byte(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(BYTE) }
-    fn shl(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHL) }
-    fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR) }
-    fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR) }
+    fn add(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADD, None) }
+    fn mul(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MUL, None) }
+    fn sub(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SUB, None) }
+    fn div(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(DIV, None) }
+    fn sdiv(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SDIV, None) }
+    fn r#mod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MOD, None) }
+    fn smod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SMOD, None) }
+    fn addmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADDMOD, None) }
+    fn mulmod(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MULMOD, None) }
+    fn exp(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EXP, None) }
+    fn signextend(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SIGNEXTEND, None) }
+    fn lt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(LT, None) }
+    fn gt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(GT, None) }
+    fn slt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLT, None) }
+    fn sgt(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SGT, None) }
+    fn eq(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(EQ, None) }
+    fn iszero(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ISZERO, None) }
+    fn and(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(AND, None) }
+    fn or(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(OR, None) }
+    fn xor(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(XOR, None) }
+    fn not(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(NOT, None) }
+    fn byte(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(BYTE, None) }
+    fn shl(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHL, None) }
+    fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR, None) }
+    fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR, None) }
 }
 
 #[cfg(test)]
@@ -76,7 +84,7 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |input: [u256; 1]| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }
+            |input: [u256; 1], _mem| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }, None
         ), Err("Stack is empty".to_string()));
     }
 
@@ -85,7 +93,7 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |_input: [u256; 0]| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }
+            |_input: [u256; 0], _mem| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }, None
         ), Err("Stack overflow".to_string()));
     }
 

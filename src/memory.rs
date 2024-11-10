@@ -1,11 +1,11 @@
 use ethnum::u256;
 
-struct Memory {
+pub struct Memory {
     arr: Vec<u8>,
 }
 
 impl Memory {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { arr: Vec::<u8>::new() }
     }
 
