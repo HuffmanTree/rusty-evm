@@ -46,6 +46,16 @@ impl Memory {
 
         res
     }
+
+    fn access(&self, offset: usize, size: usize) -> Vec<u8> {
+        let mut res = Vec::<u8>::new();
+
+        for i in 0..size {
+            res.push(self.arr.get(offset + i).unwrap_or(&0_u8).clone());
+        }
+
+        res
+    }
 }
 
 #[cfg(test)]
@@ -75,5 +85,13 @@ mod tests {
         let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
 
         assert_eq!(memory.load(6), uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
+    }
+
+    #[test]
+    fn access_an_arbitrary_number_of_bytes() {
+        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0] };
+
+        assert_eq!(memory.access(2, 5), vec![0, 0, 4, 5, 6]);
+        assert_eq!(memory.access(2, 10), vec![0, 0, 4, 5, 6, 7, 0, 0, 0, 0]);
     }
 }
