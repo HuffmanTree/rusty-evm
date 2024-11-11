@@ -71,3 +71,5 @@ pub static SAR: TransitionFunction<2, 1> = |[shift, value], _mem| TransitionFunc
     (Err(_), false) => U256::ZERO,
     (Err(_), true) => U256::MAX,
 }], jump: 1 };
+// (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
+pub static POP: TransitionFunction<1, 0> = |[_x], _mem| TransitionFunctionOutput { cost: 2, result: [], jump: 1 };

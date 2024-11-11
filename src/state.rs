@@ -1,7 +1,7 @@
 use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MOD, MUL, MULMOD, NOT, OR, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MOD, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -70,6 +70,7 @@ impl State {
     fn shl(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHL, None) }
     fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR, None) }
     fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR, None) }
+    fn pop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(POP, None) }
 }
 
 #[cfg(test)]
@@ -848,5 +849,16 @@ mod tests {
 
         assert_eq!(state.sar(), Ok(TransitionOutput { cost: 3, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")));
+    }
+
+    #[test]
+    fn pop() {
+        let mut state = State::new();
+
+        state.stack.push(uint!("42")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")).unwrap();
+
+        assert_eq!(state.pop(), Ok(TransitionOutput { cost: 2, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("42")));
     }
 }
