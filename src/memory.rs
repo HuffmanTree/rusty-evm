@@ -14,7 +14,7 @@ impl Memory {
         memory_size_word.pow(2) / 512 + (3 * memory_size_word)
     }
 
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.arr.len()
     }
 
@@ -35,9 +35,14 @@ impl Memory {
         (extension_size, Memory::extension_cost(extension_size))
     }
 
-    fn load(&self, offset: usize) -> u256 {
+    pub fn load(&mut self, offset: usize) -> (usize, usize, u256) {
         let mut res = u256::from(0_u8);
         let mut i = 0_usize;
+        let mut extension_size = 0_usize;
+        while self.arr.len() < offset + 32 {
+            self.arr.append(&mut vec![0; 32]);
+            extension_size += 32;
+        }
 
         while i < 32 {
             res <<= 8;
@@ -48,10 +53,10 @@ impl Memory {
             i += 1;
         }
 
-        res
+        (extension_size, Memory::extension_cost(extension_size), res)
     }
 
-    fn access(&self, offset: usize, size: usize) -> Vec<u8> {
+    pub fn access(&self, offset: usize, size: usize) -> Vec<u8> {
         let mut res = Vec::<u8>::new();
 
         for i in 0..size {
@@ -86,9 +91,9 @@ mod tests {
 
     #[test]
     fn loads_32_bytes_padded_with_zeros() {
-        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
 
-        assert_eq!(memory.load(6), uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
+        assert_eq!(memory.load(6).2, uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
     }
 
     #[test]

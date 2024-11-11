@@ -1,7 +1,7 @@
 use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MOD, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -71,6 +71,7 @@ impl State {
     fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR, None) }
     fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR, None) }
     fn pop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(POP, None) }
+    fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true })) }
 }
 
 #[cfg(test)]
@@ -860,5 +861,60 @@ mod tests {
 
         assert_eq!(state.pop(), Ok(TransitionOutput { cost: 2, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("42")));
+    }
+
+    #[test]
+    fn mload_no_memory_extension() {
+        let mut state = State::new();
+        state.memory.store(0_usize, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
+        assert_eq!(state.memory.size(), 32);
+
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.mload(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")));
+        assert_eq!(state.memory.size(), 32);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
+    }
+
+    #[test]
+    fn mload_memory_extension() {
+        let mut state = State::new();
+        state.memory.store(0_usize, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
+        assert_eq!(state.memory.size(), 32);
+
+        state.stack.push(uint!("2")).unwrap();
+
+        assert_eq!(state.mload(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0xB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A023690000")));
+        assert_eq!(state.memory.size(), 64);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn mload_another_memory_extension() {
+        let mut state = State::new();
+        state.memory.store(0_usize, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
+        assert_eq!(state.memory.size(), 32);
+
+        state.stack.push(uint!("30")).unwrap();
+
+        assert_eq!(state.mload(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x2369000000000000000000000000000000000000000000000000000000000000")));
+        assert_eq!(state.memory.size(), 64);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn mload_big_memory_extension() {
+        let mut state = State::new();
+        state.memory.store(0_usize, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
+        assert_eq!(state.memory.size(), 32);
+
+        state.stack.push(uint!("500")).unwrap();
+
+        assert_eq!(state.mload(), Ok(TransitionOutput { cost: 51, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0")));
+        assert_eq!(state.memory.size(), 544);
     }
 }

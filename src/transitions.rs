@@ -73,3 +73,10 @@ pub static SAR: TransitionFunction<2, 1> = |[shift, value], _mem| TransitionFunc
 }], jump: 1 };
 // (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |[_x], _mem| TransitionFunctionOutput { cost: 2, result: [], jump: 1 };
+pub static MLOAD: TransitionFunction<1, 1> = |[offset], mem| match TryInto::<usize>::try_into(offset) {
+    Ok(offset) => {
+        let (_, dynamic_cost, res) = mem.unwrap().load(offset);
+        TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [res], jump: 1 }
+    },
+    _ => panic!("Out of memory"),
+};
