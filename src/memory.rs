@@ -14,7 +14,11 @@ impl Memory {
         memory_size_word.pow(2) / 512 + (3 * memory_size_word)
     }
 
-    fn store(&mut self, offset: usize, value: Vec<u8>) -> (usize, usize) {
+    fn size(&self) -> usize {
+        self.arr.len()
+    }
+
+    pub fn store(&mut self, offset: usize, value: Vec<u8>) -> (usize, usize) {
         let mut extension_size = 0_usize;
         if self.arr.is_empty() {
             self.arr = vec![0; 32];
@@ -93,5 +97,12 @@ mod tests {
 
         assert_eq!(memory.access(2, 5), vec![0, 0, 4, 5, 6]);
         assert_eq!(memory.access(2, 10), vec![0, 0, 4, 5, 6, 7, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn returns_the_current_size() {
+        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0] };
+
+        assert_eq!(memory.size(), 11);
     }
 }
