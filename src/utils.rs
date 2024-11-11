@@ -1,7 +1,7 @@
 use ethnum::{u256, U256};
 use sha3::{Digest, Keccak256};
 
-pub trait NeededSizeInBytes { fn needed_size_in_bytes(self) -> u32; }
+pub trait NeededSizeInBytes { fn needed_size_in_bytes(self) -> usize; }
 
 pub trait IsNeg { fn is_neg(&self) -> bool; }
 
@@ -36,8 +36,8 @@ impl Hash for Vec<u8> {
 }
 
 impl NeededSizeInBytes for u256 {
-    fn needed_size_in_bytes(mut self) -> u32 {
-        let mut n = 0_u32;
+    fn needed_size_in_bytes(mut self) -> usize {
+        let mut n = 0_usize;
         while self != 0 {
             self >>= 8;
             n += 1;

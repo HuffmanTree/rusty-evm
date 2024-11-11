@@ -7,7 +7,7 @@ use crate::memory::Memory;
 type TransitionFunctionInput<const I: usize> = [u256; I];
 
 pub struct TransitionFunctionOutput<const O: usize> {
-    pub cost: u32,
+    pub cost: usize,
     pub result: [u256; O],
     pub jump: usize,
 }
@@ -16,7 +16,7 @@ pub type TransitionFunction<const I: usize, const O: usize> = fn(TransitionFunct
 
 #[derive(Debug,PartialEq,Eq)]
 pub struct TransitionOutput {
-    pub cost: u32,
+    pub cost: usize,
     pub jump: usize,
 }
 
