@@ -21,15 +21,13 @@ impl Hash for Vec<u8> {
         let mut hasher = Keccak256::new();
         hasher.update(self);
         let arr = hasher.finalize();
-        let mut i = 0_usize;
 
-        while i < 32 {
+        for i in 0..32 {
             result <<= 8;
             result |= u256::from(match arr.get(i) {
                 Some(v) => v.clone(),
                 None => 0,
             });
-            i += 1;
         }
         result
     }

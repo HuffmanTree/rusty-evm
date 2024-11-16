@@ -1,4 +1,4 @@
-use ethnum::u256;
+use ethnum::{u256, U256};
 
 pub struct Memory {
     arr: Vec<u8>,
@@ -26,11 +26,9 @@ impl Memory {
         let extension_size = self.extension_size(offset, 32);
         self.arr.append(&mut vec![0; extension_size]);
 
-        let mut i = 32_usize;
-        while i > 0 {
-            self.arr[offset + i - 1] = (value & 0xFF).try_into().unwrap();
+        for i in 0..32 {
+            self.arr[offset + 31 - i] = (value & 0xFF).try_into().unwrap();
             value >>= 8;
-            i -= 1;
         }
         (extension_size, Memory::extension_cost(extension_size))
     }
@@ -39,18 +37,14 @@ impl Memory {
         let extension_size = self.extension_size(offset, 32);
         self.arr.append(&mut vec![0; extension_size]);
 
-        let mut res = u256::from(0_u8);
-        let mut i = 0_usize;
-
-        while i < 32 {
+        let mut res = U256::ZERO;
+        for i in 0..32 {
             res <<= 8;
             res |= u256::from(match self.arr.get(offset + i) {
                 Some(v) => v.clone(),
                 None => 0,
             });
-            i += 1;
         }
-
         (extension_size, Memory::extension_cost(extension_size), res)
     }
 
