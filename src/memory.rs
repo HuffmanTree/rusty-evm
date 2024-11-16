@@ -9,6 +9,10 @@ impl Memory {
         Self { arr: Vec::<u8>::new() }
     }
 
+    fn extension_size(&self, offset: usize, size: usize) -> usize {
+        if self.size() >= offset + size { 0_usize } else { (((offset + size - self.size() - 1) >> 5) + 1) << 5 }
+    }
+
     fn extension_cost(extension_size: usize) -> usize {
         let memory_size_word = (extension_size + 31) / 32;
         memory_size_word.pow(2) / 512 + (3 * memory_size_word)
@@ -19,13 +23,10 @@ impl Memory {
     }
 
     pub fn store(&mut self, offset: usize, mut value: u256) -> (usize, usize) {
-        let mut extension_size = 0_usize;
-        let mut i = 32_usize;
-        while self.arr.len() < offset + 32 {
-            self.arr.append(&mut vec![0; 32]);
-            extension_size += 32;
-        }
+        let extension_size = self.extension_size(offset, 32);
+        self.arr.append(&mut vec![0; extension_size]);
 
+        let mut i = 32_usize;
         while i > 0 {
             self.arr[offset + i - 1] = (value & 0xFF).try_into().unwrap();
             value >>= 8;
@@ -35,13 +36,11 @@ impl Memory {
     }
 
     pub fn load(&mut self, offset: usize) -> (usize, usize, u256) {
+        let extension_size = self.extension_size(offset, 32);
+        self.arr.append(&mut vec![0; extension_size]);
+
         let mut res = u256::from(0_u8);
         let mut i = 0_usize;
-        let mut extension_size = 0_usize;
-        while self.arr.len() < offset + 32 {
-            self.arr.append(&mut vec![0; 32]);
-            extension_size += 32;
-        }
 
         while i < 32 {
             res <<= 8;
@@ -100,5 +99,18 @@ mod tests {
         let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0] };
 
         assert_eq!(memory.size(), 11);
+    }
+
+    #[test]
+    fn computes_extension_size() {
+        let memory = Memory { arr: vec![0; 32] };
+
+        assert_eq!(memory.extension_size(0, 32), 0);
+        assert_eq!(memory.extension_size(1, 32), 32);
+        assert_eq!(memory.extension_size(31, 32), 32);
+        assert_eq!(memory.extension_size(32, 32), 32);
+        assert_eq!(memory.extension_size(33, 32), 64);
+        assert_eq!(memory.extension_size(64, 32), 64);
+        assert_eq!(memory.extension_size(65, 32), 96);
     }
 }
