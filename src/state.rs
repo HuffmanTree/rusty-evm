@@ -1,7 +1,7 @@
 use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -72,6 +72,7 @@ impl State {
     fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR, None) }
     fn pop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(POP, None) }
     fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true })) }
+    fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true })) }
 }
 
 #[cfg(test)]
@@ -915,6 +916,51 @@ mod tests {
 
         assert_eq!(state.mload(), Ok(TransitionOutput { cost: 51, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("0")));
+        assert_eq!(state.memory.size(), 544);
+    }
+
+    #[test]
+    fn mstore() {
+        let mut state = State::new();
+        assert_eq!(state.memory.size(), 0);
+
+        state.stack.push(uint!("0xFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.memory.size(), 32);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF]);
+
+        state.stack.push(uint!("0xFF")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+
+        assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.memory.size(), 64);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn mstore_empty_memory() {
+        let mut state = State::new();
+        assert_eq!(state.memory.size(), 0);
+
+        state.stack.push(uint!("0xFF")).unwrap();
+        state.stack.push(uint!("3")).unwrap();
+
+        assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 9, jump: 1 }));
+        assert_eq!(state.memory.size(), 64);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn mstore_big_memory_extension() {
+        let mut state = State::new();
+        assert_eq!(state.memory.size(), 0);
+
+        state.stack.push(uint!("0xABFF")).unwrap();
+        state.stack.push(uint!("500")).unwrap();
+
+        assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 54, jump: 1 }));
         assert_eq!(state.memory.size(), 544);
     }
 }
