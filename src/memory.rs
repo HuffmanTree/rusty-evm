@@ -18,19 +18,18 @@ impl Memory {
         self.arr.len()
     }
 
-    pub fn store(&mut self, offset: usize, value: Vec<u8>) -> (usize, usize) {
+    pub fn store(&mut self, offset: usize, mut value: u256) -> (usize, usize) {
         let mut extension_size = 0_usize;
-        if self.arr.is_empty() {
-            self.arr = vec![0; 32];
-            extension_size = 32;
+        let mut i = 32_usize;
+        while self.arr.len() < offset + 32 {
+            self.arr.append(&mut vec![0; 32]);
+            extension_size += 32;
         }
-        if self.arr.len() < offset + value.len() {
-            let s = offset + value.len() - self.arr.len();
-            self.arr.append(&mut vec![0; s]);
-            extension_size += s;
-        }
-        for (i, v) in value.iter().enumerate() {
-            self.arr[offset + i] = v.clone();
+
+        while i > 0 {
+            self.arr[offset + i - 1] = (value & 0xFF).try_into().unwrap();
+            value >>= 8;
+            i -= 1;
         }
         (extension_size, Memory::extension_cost(extension_size))
     }
@@ -77,16 +76,8 @@ mod tests {
         let mut memory = Memory::new();
 
         assert_eq!(memory.arr.len(), 0);
-        assert_eq!(memory.store(4, vec![4, 5, 6, 7]), (32, 3));
-        assert_eq!(memory.arr, vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    fn allocates_the_necessary() {
-        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
-
-        assert_eq!(memory.store(30, vec![30, 31, 32, 33]), (2, 3));
-        assert_eq!(memory.arr, vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 31, 32, 33]);
+        assert_eq!(memory.store(4, uint!("0x0000000000000000000000000000000000000000000000000000000004050607")), (64, 6));
+        assert_eq!(memory.arr, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]
