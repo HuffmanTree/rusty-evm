@@ -1,4 +1,4 @@
-use ethnum::u256;
+use ethnum::{u256, U256};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -8,26 +8,26 @@ struct StorageValue {
 }
 
 pub struct Storage {
-    store: HashMap<u128, StorageValue>
+    store: HashMap<u256, StorageValue>
 }
 
 impl Storage {
     pub fn new() -> Self {
-        Self { store: HashMap::<u128, StorageValue>::new() }
+        Self { store: HashMap::<u256, StorageValue>::new() }
     }
 
-    fn store(&mut self, key: u128, value: u256) -> Option<StorageValue> {
+    fn store(&mut self, key: u256, value: u256) -> Option<StorageValue> {
         self.store.insert(key, StorageValue { value, warm: false })
     }
 
-    fn load(&mut self, key: u128) -> StorageValue {
+    fn load(&mut self, key: u256) -> StorageValue {
         match self.store.get_mut(&key) {
             Some(v) => {
                 let res = v.clone();
                 v.warm = true;
                 res
             },
-            None => StorageValue { value: u256::from(0_u8), warm: false },
+            None => StorageValue { value: U256::ZERO, warm: false },
         }
     }
 }
@@ -42,9 +42,9 @@ mod tests {
     fn stores_a_value() {
         let mut storage = Storage::new();
 
-        storage.store(42, uint!("0x0000000004050607000000000000000000000000000000000000000000000000"));
+        storage.store(uint!("42"), uint!("0x0000000004050607000000000000000000000000000000000000000000000000"));
 
-        assert_eq!(storage.store.get(&42).unwrap().clone(), StorageValue {
+        assert_eq!(storage.store.get(&uint!("42")).unwrap().clone(), StorageValue {
             value: uint!("0x0000000004050607000000000000000000000000000000000000000000000000"),
             warm: false,
         });
@@ -53,16 +53,16 @@ mod tests {
     #[test]
     fn loads_an_existing_value_and_warms_the_slot() {
         let mut storage = Storage::new();
-        storage.store.insert(42, StorageValue {
+        storage.store.insert(uint!("42"), StorageValue {
             value: uint!("0x0000000004050607000000000000000000000000000000000000000000000000"),
             warm: false,
         });
 
-        assert_eq!(storage.load(42), StorageValue {
+        assert_eq!(storage.load(uint!("42")), StorageValue {
             value: uint!("0x0000000004050607000000000000000000000000000000000000000000000000"),
             warm: false,
         });
-        assert_eq!(storage.load(42), StorageValue {
+        assert_eq!(storage.load(uint!("42")), StorageValue {
             value: uint!("0x0000000004050607000000000000000000000000000000000000000000000000"),
             warm: true,
         });
@@ -72,11 +72,11 @@ mod tests {
     fn loads_a_non_existing_value() {
         let mut storage = Storage::new();
 
-        assert_eq!(storage.load(42), StorageValue {
+        assert_eq!(storage.load(uint!("42")), StorageValue {
             value: uint!("0"),
             warm: false,
         });
-        assert_eq!(storage.load(42), StorageValue {
+        assert_eq!(storage.load(uint!("42")), StorageValue {
             value: uint!("0"),
             warm: false,
         });
