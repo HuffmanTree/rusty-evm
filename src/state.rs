@@ -1,7 +1,7 @@
 use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -73,6 +73,7 @@ impl State {
     fn pop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(POP, None) }
     fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true })) }
     fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true })) }
+    fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8, Some(TransitionBuilderOptions { memory_access: true })) }
 }
 
 #[cfg(test)]
@@ -962,5 +963,25 @@ mod tests {
 
         assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 54, jump: 1 }));
         assert_eq!(state.memory.size(), 544);
+    }
+
+    #[test]
+    fn mstore8() {
+        let mut state = State::new();
+        assert_eq!(state.memory.size(), 0);
+
+        state.stack.push(uint!("0xFFAB")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+
+        assert_eq!(state.mstore8(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.memory.size(), 32);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        state.stack.push(uint!("0xFFAB")).unwrap();
+        state.stack.push(uint!("31")).unwrap();
+
+        assert_eq!(state.mstore8(), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.memory.size(), 32);
+        assert_eq!(state.memory.access(0, state.memory.size()), vec![0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAB]);
     }
 }

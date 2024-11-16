@@ -87,3 +87,10 @@ pub static MSTORE: TransitionFunction<2, 0> = |[offset, value], mem| match TryIn
     },
     _ => panic!("Out of memory"),
 };
+pub static MSTORE8: TransitionFunction<2, 0> = |[offset, value], mem| match TryInto::<usize>::try_into(offset) {
+    Ok(offset) => {
+        let (_, dynamic_cost) = mem.unwrap().store_byte(offset, value);
+        TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 }
+    },
+    _ => panic!("Out of memory"),
+};
