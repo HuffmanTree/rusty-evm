@@ -867,7 +867,7 @@ mod tests {
     #[test]
     fn mload_no_memory_extension() {
         let mut state = State::new();
-        state.memory.store(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
+        state.memory.store_word(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
         assert_eq!(state.memory.size(), 32);
 
         state.stack.push(uint!("0")).unwrap();
@@ -881,7 +881,7 @@ mod tests {
     #[test]
     fn mload_memory_extension() {
         let mut state = State::new();
-        state.memory.store(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
+        state.memory.store_word(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
         assert_eq!(state.memory.size(), 32);
 
         state.stack.push(uint!("2")).unwrap();
@@ -895,7 +895,7 @@ mod tests {
     #[test]
     fn mload_another_memory_extension() {
         let mut state = State::new();
-        state.memory.store(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
+        state.memory.store_word(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
         assert_eq!(state.memory.size(), 32);
 
         state.stack.push(uint!("30")).unwrap();
@@ -909,7 +909,7 @@ mod tests {
     #[test]
     fn mload_big_memory_extension() {
         let mut state = State::new();
-        state.memory.store(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
+        state.memory.store_word(0_usize, uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369"));
         assert_eq!(state.memory.size(), 32);
 
         state.stack.push(uint!("500")).unwrap();

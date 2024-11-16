@@ -22,7 +22,7 @@ impl Memory {
         self.arr.len()
     }
 
-    pub fn store(&mut self, offset: usize, mut value: u256) -> (usize, usize) {
+    pub fn store_word(&mut self, offset: usize, mut value: u256) -> (usize, usize) {
         let extension_size = self.extension_size(offset, 32);
         self.arr.append(&mut vec![0; extension_size]);
 
@@ -33,7 +33,7 @@ impl Memory {
         (extension_size, Memory::extension_cost(extension_size))
     }
 
-    pub fn load(&mut self, offset: usize) -> (usize, usize, u256) {
+    pub fn load_word(&mut self, offset: usize) -> (usize, usize, u256) {
         let extension_size = self.extension_size(offset, 32);
         self.arr.append(&mut vec![0; extension_size]);
 
@@ -69,7 +69,7 @@ mod tests {
         let mut memory = Memory::new();
 
         assert_eq!(memory.arr.len(), 0);
-        assert_eq!(memory.store(4, uint!("0x0000000000000000000000000000000000000000000000000000000004050607")), (64, 6));
+        assert_eq!(memory.store_word(4, uint!("0x0000000000000000000000000000000000000000000000000000000004050607")), (64, 6));
         assert_eq!(memory.arr, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -77,7 +77,7 @@ mod tests {
     fn loads_32_bytes_padded_with_zeros() {
         let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
 
-        assert_eq!(memory.load(6).2, uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
+        assert_eq!(memory.load_word(6).2, uint!("0x0607000000000000000000000000000000000000000000000000000000000000"));
     }
 
     #[test]
