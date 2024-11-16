@@ -95,3 +95,7 @@ pub static MSTORE8: TransitionFunction<2, 0> = |[offset, value], mem, _| match T
     },
     _ => panic!("Out of memory"),
 };
+pub static SLOAD: TransitionFunction<1, 1> = |[key], _, store| {
+    let res = store.unwrap().load(key);
+    TransitionFunctionOutput { cost: if res.warm { 100 } else { 2100 }, result: [res.value], jump: 1 }
+};

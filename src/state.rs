@@ -2,7 +2,7 @@ use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -78,6 +78,7 @@ impl State {
     fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
     fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
     fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
+    fn sload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLOAD, Some(TransitionBuilderOptions { memory_access: false, storage_access: true })) }
 }
 
 #[cfg(test)]
@@ -987,5 +988,19 @@ mod tests {
         assert_eq!(state.mstore8(), Ok(TransitionOutput { cost: 3, jump: 1 }));
         assert_eq!(state.memory.size(), 32);
         assert_eq!(state.memory.access(0, state.memory.size()), vec![0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAB]);
+    }
+
+    #[test]
+    fn sload() {
+        let mut state = State::new();
+        state.storage.store(uint!("42"), uint!("0xAB"));
+
+        state.stack.push(uint!("42")).unwrap();
+        assert_eq!(state.sload(), Ok(TransitionOutput { cost: 2100, jump: 1 }));
+        state.stack.push(uint!("42")).unwrap();
+        assert_eq!(state.sload(), Ok(TransitionOutput { cost: 100, jump: 1 }));
+
+        assert_eq!(state.stack.pop(), Some(uint!("0xAB")));
+        assert_eq!(state.stack.pop(), Some(uint!("0xAB")));
     }
 }

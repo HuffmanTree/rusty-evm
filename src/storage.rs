@@ -2,9 +2,9 @@ use ethnum::{u256, U256};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct StorageValue {
-    value: u256,
-    warm: bool,
+pub struct StorageValue {
+    pub value: u256,
+    pub warm: bool,
 }
 
 pub struct Storage {
@@ -16,11 +16,11 @@ impl Storage {
         Self { store: HashMap::<u256, StorageValue>::new() }
     }
 
-    fn store(&mut self, key: u256, value: u256) -> Option<StorageValue> {
+    pub fn store(&mut self, key: u256, value: u256) -> Option<StorageValue> {
         self.store.insert(key, StorageValue { value, warm: false })
     }
 
-    fn load(&mut self, key: u256) -> StorageValue {
+    pub fn load(&mut self, key: u256) -> StorageValue {
         match self.store.get_mut(&key) {
             Some(v) => {
                 let res = v.clone();
