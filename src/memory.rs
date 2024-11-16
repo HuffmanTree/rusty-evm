@@ -22,6 +22,14 @@ impl Memory {
         self.arr.len()
     }
 
+    pub fn store_byte(&mut self, offset: usize, value: u256) -> (usize, usize) {
+        let extension_size = self.extension_size(offset, 1);
+        self.arr.append(&mut vec![0; extension_size]);
+
+        self.arr[offset] = (value & 0xFF).try_into().unwrap();
+        (extension_size, Memory::extension_cost(extension_size))
+    }
+
     pub fn store_word(&mut self, offset: usize, mut value: u256) -> (usize, usize) {
         let extension_size = self.extension_size(offset, 32);
         self.arr.append(&mut vec![0; extension_size]);
@@ -106,5 +114,16 @@ mod tests {
         assert_eq!(memory.extension_size(33, 32), 64);
         assert_eq!(memory.extension_size(64, 32), 64);
         assert_eq!(memory.extension_size(65, 32), 96);
+    }
+
+    #[test]
+    fn store_byte() {
+        let mut memory = Memory::new();
+
+        assert_eq!(memory.store_byte(2, uint!("0xFFAB")), (32, 3));
+        assert_eq!(memory.arr, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        assert_eq!(memory.store_byte(32, uint!("0xFFAB")), (32, 3));
+        assert_eq!(memory.arr, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 }
