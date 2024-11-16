@@ -7,12 +7,12 @@ struct StorageValue {
     warm: bool,
 }
 
-struct Storage {
+pub struct Storage {
     store: HashMap<u128, StorageValue>
 }
 
 impl Storage {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { store: HashMap::<u128, StorageValue>::new() }
     }
 

@@ -1,16 +1,19 @@
 use ethnum::U256;
 use crate::memory::Memory;
 use crate::stack::Stack;
+use crate::storage::Storage;
 use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLT, SMOD, SUB, XOR};
 
 struct State {
     stack: Stack,
     memory: Memory,
+    storage: Storage,
     stop_flag: bool,
 }
 
 struct TransitionBuilderOptions {
     memory_access: bool,
+    storage_access: bool,
 }
 
 impl State {
@@ -18,6 +21,7 @@ impl State {
         Self {
             stack: Stack::new(),
             memory: Memory::new(),
+            storage: Storage::new(),
             stop_flag: false,
         }
     }
@@ -28,7 +32,7 @@ impl State {
     }
 
     fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>, options: Option<TransitionBuilderOptions>) -> Result<TransitionOutput, String> {
-        let options = options.unwrap_or(TransitionBuilderOptions { memory_access: false });
+        let options = options.unwrap_or(TransitionBuilderOptions { memory_access: false, storage_access: false });
         let mut input = [U256::ZERO; I];
         for i in 0..I {
             input[i] = match self.stack.pop() {
@@ -36,7 +40,7 @@ impl State {
                 _ => return Err("Stack is empty".to_string()),
             }
         };
-        let output = f(input, if options.memory_access { Some(&mut self.memory) } else { None });
+        let output = f(input, if options.memory_access { Some(&mut self.memory) } else { None }, if options.storage_access { Some(&mut self.storage) } else { None });
         for o in 0..O {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
@@ -71,9 +75,9 @@ impl State {
     fn shr(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SHR, None) }
     fn sar(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SAR, None) }
     fn pop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(POP, None) }
-    fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true })) }
-    fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true })) }
-    fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8, Some(TransitionBuilderOptions { memory_access: true })) }
+    fn mload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MLOAD, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
+    fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
+    fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
 }
 
 #[cfg(test)]
@@ -88,7 +92,7 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |input: [u256; 1], _mem| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }, None
+            |input: [u256; 1], _, _| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }, None
         ), Err("Stack is empty".to_string()));
     }
 
@@ -97,7 +101,7 @@ mod tests {
         let mut state = State::new();
 
         assert_eq!(state.transition_builder(
-            |_input: [u256; 0], _mem| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }, None
+            |_input: [u256; 0], _, _| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }, None
         ), Err("Stack overflow".to_string()));
     }
 
