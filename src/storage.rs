@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StorageValue {
-    original_value: u256,
+    pub original_value: u256,
     pub value: u256,
     pub warm: bool,
 }

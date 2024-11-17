@@ -99,3 +99,18 @@ pub static SLOAD: TransitionFunction<1, 1> = |[key], _, store| {
     let res = store.unwrap().load(key);
     TransitionFunctionOutput { cost: if res.warm { 100 } else { 2100 }, result: [res.value], jump: 1 }
 };
+// TODO (fguerin - 17/11/2024) Add gas refund
+pub static SSTORE: TransitionFunction<2, 0> = |[key, value], _, store| {
+    let (current_value, original_value, warm) = match store.unwrap().store(key, value) {
+        Some(v) => (v.value, v.original_value, v.warm),
+        None => (U256::ZERO, U256::ZERO, false),
+    };
+    let base_cost: usize =
+        if value == current_value { 100 }         // the value does not change
+        else if current_value == original_value { // the storage slot is clean ...
+            if original_value == 0 { 20000 }      // ... and has not explicit value
+            else { 2900 }                         // ... and has an explicit value
+        }
+        else { 100 };                             // the value changes and the storage slot is dirty
+    TransitionFunctionOutput { cost: base_cost + if warm { 0 } else { 2100 }, result: [], jump: 1 }
+};

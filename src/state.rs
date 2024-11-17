@@ -3,7 +3,7 @@ use ethnum::{u256, U256};
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SUB, XOR};
+use crate::transitions::{TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -84,6 +84,7 @@ impl State {
     fn mstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
     fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8, Some(TransitionBuilderOptions { memory_access: true, storage_access: false })) }
     fn sload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLOAD, Some(TransitionBuilderOptions { memory_access: false, storage_access: true })) }
+    fn sstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SSTORE, Some(TransitionBuilderOptions { memory_access: false, storage_access: true })) }
 }
 
 #[cfg(test)]
@@ -1008,5 +1009,29 @@ mod tests {
 
         assert_eq!(state.stack.pop(), Some(uint!("0xAB")));
         assert_eq!(state.stack.pop(), Some(uint!("0xAB")));
+    }
+
+    #[test]
+    fn sstore() {
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new() });
+
+        state.stack.push(uint!("0xFFFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+        assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 22100, jump: 1 })); // clean storage - no previous value - cold slot
+
+        state.stack.push(uint!("0xFFFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+        assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 100, jump: 1 })); // dirty storage - same value - warn slot
+    }
+
+    #[test]
+    fn sstore_with_original_value() {
+        let mut initial_storage = HashMap::<u256, u256>::new();
+        initial_storage.insert(uint!("1"), uint!("55"));
+        let mut state = State::new(StateParameters { initial_storage });
+
+        state.stack.push(uint!("10")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+        assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 5000, jump: 1 })); // clean storage - different value - cold slot
     }
 }
