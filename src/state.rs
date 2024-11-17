@@ -1,4 +1,5 @@
-use ethnum::U256;
+use std::collections::HashMap;
+use ethnum::{u256, U256};
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
@@ -21,7 +22,7 @@ impl State {
         Self {
             stack: Stack::new(),
             memory: Memory::new(),
-            storage: Storage::new(),
+            storage: Storage::new(HashMap::<u256, u256>::new()),
             stop_flag: false,
         }
     }
