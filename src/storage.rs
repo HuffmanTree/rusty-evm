@@ -23,8 +23,8 @@ impl Storage {
 
     pub fn store(&mut self, key: u256, value: u256) -> Option<StorageValue> {
         match self.store.get(&key) {
-            Some(v) => self.store.insert(key, StorageValue { original_value: v.original_value, value, warm: v.warm }),
-            None => self.store.insert(key, StorageValue { original_value: U256::ZERO, value, warm: false }),
+            Some(v) => self.store.insert(key, StorageValue { original_value: v.original_value, value, warm: true }),
+            None => self.store.insert(key, StorageValue { original_value: U256::ZERO, value, warm: true }),
         }
     }
 
@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(storage.store.get(&uint!("42")).unwrap().clone(), StorageValue {
             original_value: uint!("0"),
             value: uint!("0x0000000004050607000000000000000000000000000000000000000000000000"),
-            warm: false,
+            warm: true,
         });
     }
 
