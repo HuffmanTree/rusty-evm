@@ -35,7 +35,10 @@ impl Storage {
                 v.warm = true;
                 res
             },
-            None => StorageValue { original_value: U256::ZERO, value: U256::ZERO, warm: false },
+            None => {
+                self.store.insert(key, StorageValue { original_value: U256::ZERO, value: U256::ZERO, warm: true });
+                StorageValue { original_value: U256::ZERO, value: U256::ZERO, warm: false }
+            },
         }
     }
 }
@@ -109,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn loads_a_non_existing_value() {
+    fn loads_a_non_existing_value_and_warms_the_slot() {
         let mut storage = Storage::new(HashMap::<u256, u256>::new());
 
         assert_eq!(storage.load(uint!("42")), StorageValue {
@@ -120,7 +123,7 @@ mod tests {
         assert_eq!(storage.load(uint!("42")), StorageValue {
             original_value: uint!("0"),
             value: uint!("0"),
-            warm: false,
+            warm: true,
         });
     }
 }
