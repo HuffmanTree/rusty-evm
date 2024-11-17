@@ -41,12 +41,8 @@ impl State {
         Ok(TransitionOutput { cost: 0, jump: 0 })
     }
 
-    fn jump(&mut self) -> Result<TransitionOutput, String> {
-        let counter = match self.stack.pop() {
-            Some(x) => x,
-            _ => return Err("Stack is empty".to_string()),
-        };
-        let invalid_jumpdest: Result<TransitionOutput, String> = Err("Invalid jump destination".to_string());
+    fn try_jump(&mut self, counter: u256) -> Result<(), String> {
+        let invalid_jumpdest: Result<(), String> = Err("Invalid jump destination".to_string());
         let counter: usize = match counter.try_into() {
             Ok(x) => x,
             _ => return invalid_jumpdest,
@@ -55,7 +51,29 @@ impl State {
             Some(x) => if *x == 0x5B { counter } else { return invalid_jumpdest; },
             _ => return invalid_jumpdest,
         };
+        Ok(())
+    }
+
+    fn jump(&mut self) -> Result<TransitionOutput, String> {
+        let counter = match self.stack.pop() {
+            Some(x) => x,
+            _ => return Err("Stack is empty".to_string()),
+        };
+        self.try_jump(counter)?;
         Ok(TransitionOutput { cost: 8, jump: 0 })
+    }
+
+    fn jumpi(&mut self) -> Result<TransitionOutput, String> {
+        let counter = match self.stack.pop() {
+            Some(x) => x,
+            _ => return Err("Stack is empty".to_string()),
+        };
+        let b = match self.stack.pop() {
+            Some(x) => x,
+            _ => return Err("Stack is empty".to_string()),
+        };
+        if b == U256::ZERO { Ok(TransitionOutput { cost: 10, jump: 1 }) }
+        else { self.try_jump(counter)?; Ok(TransitionOutput { cost: 10, jump: 0 }) }
     }
 
     fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>, options: Option<TransitionBuilderOptions>) -> Result<TransitionOutput, String> {
@@ -1074,6 +1092,35 @@ mod tests {
 
         state.stack.push(uint!("2")).unwrap();
         assert_eq!(state.jump(), Ok(TransitionOutput { cost: 8, jump: 0 }));
+        assert_eq!(state.pc, 2);
+    }
+
+    #[test]
+    fn jumpi() {
+        let code = vec![0_u8, 0_u8, 0x5B, 0_u8];
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code });
+        assert_eq!(state.pc, 0);
+
+        state.stack.push(uint!("0")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+        assert_eq!(state.jumpi(), Ok(TransitionOutput { cost: 10, jump: 1 }));
+        assert_eq!(state.pc, 0);
+
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFF")).unwrap();
+        assert_eq!(state.jumpi(), Err("Invalid jump destination".to_string())); // not a usize
+
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("0xFFFF")).unwrap();
+        assert_eq!(state.jumpi(), Err("Invalid jump destination".to_string())); // not in range
+
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("1")).unwrap();
+        assert_eq!(state.jumpi(), Err("Invalid jump destination".to_string())); // not a valid destination
+
+        state.stack.push(uint!("1")).unwrap();
+        state.stack.push(uint!("2")).unwrap();
+        assert_eq!(state.jumpi(), Ok(TransitionOutput { cost: 10, jump: 0 }));
         assert_eq!(state.pc, 2);
     }
 }
