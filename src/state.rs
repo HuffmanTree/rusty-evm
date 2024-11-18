@@ -157,6 +157,7 @@ mod tests {
     fn set_the_stop_flag_to_true() {
         let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code: Vec::<u8>::new() });
 
+        assert!(!state.stop_flag);
         assert_eq!(state.stop(), Ok(TransitionOutput { cost: 0, jump: 0 }));
         assert!(state.stop_flag);
     }
