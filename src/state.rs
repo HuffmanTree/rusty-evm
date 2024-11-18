@@ -3,7 +3,7 @@ use ethnum::{u256, U256};
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -34,11 +34,6 @@ impl State {
             pc: 0,
             code: parameters.code,
         }
-    }
-
-    fn stop(&mut self) -> Result<TransitionOutput, ()> {
-        self.stop_flag = true;
-        Ok(TransitionOutput { cost: 0, jump: 0 })
     }
 
     fn try_jump(&mut self, counter: u256) -> Result<(), String> {
@@ -77,8 +72,11 @@ impl State {
     }
 
     fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
-        let memory = &mut self.memory;
-        let storage = &mut self.storage;
+        let mut context = TransitionContext {
+            memory: &mut self.memory,
+            stop_flag: &mut self.stop_flag,
+            storage: &mut self.storage,
+        };
         let mut input = [U256::ZERO; I];
         for i in 0..I {
             input[i] = match self.stack.pop() {
@@ -86,7 +84,7 @@ impl State {
                 _ => return Err("Stack is empty".to_string()),
             }
         };
-        let output = f(&mut TransitionContext { memory, storage }, input);
+        let output = f(&mut context, input);
         for o in 0..O {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
@@ -95,6 +93,7 @@ impl State {
         Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
+    fn stop(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(STOP) }
     fn add(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(ADD) }
     fn mul(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MUL) }
     fn sub(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SUB) }

@@ -7,6 +7,7 @@ use crate::memory::Memory;
 
 pub struct TransitionContext<'a> {
     pub memory: &'a mut Memory,
+    pub stop_flag: &'a mut bool,
     pub storage: &'a mut Storage,
 }
 
@@ -26,6 +27,7 @@ pub struct TransitionOutput {
     pub jump: usize,
 }
 
+pub static STOP: TransitionFunction<0, 0> = |context, []| { *context.stop_flag = true; TransitionFunctionOutput { cost: 0, result: [], jump: 0 } };
 pub static ADD: TransitionFunction<2, 1> = |_, [a, b]| TransitionFunctionOutput { cost: 3, result: [a.wrapping_add(b)], jump: 1 };
 pub static MUL: TransitionFunction<2, 1> = |_, [a, b]| TransitionFunctionOutput { cost: 5, result: [a.wrapping_mul(b)], jump: 1 };
 pub static SUB: TransitionFunction<2, 1> = |_, [a, b]| TransitionFunctionOutput { cost: 3, result: [a.wrapping_sub(b)], jump: 1 };
