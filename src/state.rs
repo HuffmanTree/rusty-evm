@@ -129,7 +129,7 @@ impl State {
 
 #[cfg(test)]
 mod tests {
-    use crate::transitions::TransitionFunctionOutput;
+    use crate::{storage::StorageValue, transitions::TransitionFunctionOutput};
 
     use super::*;
     use ethnum::{uint,u256};
@@ -1058,10 +1058,12 @@ mod tests {
         state.stack.push(uint!("0xFFFF")).unwrap();
         state.stack.push(uint!("0")).unwrap();
         assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 22100, jump: 1 })); // clean storage - no previous value - cold slot
+        assert_eq!(state.storage.load(uint!("0")), StorageValue { original_value: uint!("0"), value: uint!("0xFFFF"), warm: true });
 
         state.stack.push(uint!("0xFFFF")).unwrap();
         state.stack.push(uint!("0")).unwrap();
         assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 100, jump: 1 })); // dirty storage - same value - warn slot
+        assert_eq!(state.storage.load(uint!("0")), StorageValue { original_value: uint!("0"), value: uint!("0xFFFF"), warm: true });
     }
 
     #[test]
@@ -1073,6 +1075,7 @@ mod tests {
         state.stack.push(uint!("10")).unwrap();
         state.stack.push(uint!("1")).unwrap();
         assert_eq!(state.sstore(), Ok(TransitionOutput { cost: 5000, jump: 1 })); // clean storage - different value - cold slot
+        assert_eq!(state.storage.load(uint!("1")), StorageValue { original_value: uint!("55"), value: uint!("10"), warm: true });
     }
 
     #[test]
