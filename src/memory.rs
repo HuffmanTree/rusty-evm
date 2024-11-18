@@ -49,7 +49,7 @@ impl Memory {
         for i in 0..32 {
             res <<= 8;
             res |= u256::from(match self.arr.get(offset + i) {
-                Some(v) => v.clone(),
+                Some(v) => *v,
                 None => 0,
             });
         }
@@ -60,7 +60,7 @@ impl Memory {
         let mut res = Vec::<u8>::new();
 
         for i in 0..size {
-            res.push(self.arr.get(offset + i).unwrap_or(&0_u8).clone());
+            res.push(*self.arr.get(offset + i).unwrap_or(&0_u8));
         }
 
         res
