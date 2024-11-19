@@ -84,7 +84,7 @@ impl State {
                 _ => return Err("Stack is empty".to_string()),
             }
         };
-        let output = f(&mut context, input);
+        let output = f(&mut context, input)?;
         for o in 0..O {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
@@ -139,7 +139,7 @@ mod tests {
         let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code: Vec::<u8>::new() });
 
         assert_eq!(state.transition_builder(
-            |_, input: [u256; 1]| TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 }
+            |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
         ), Err("Stack is empty".to_string()));
     }
 
@@ -148,8 +148,17 @@ mod tests {
         let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code: Vec::<u8>::new() });
 
         assert_eq!(state.transition_builder(
-            |_, _input: [u256; 0]| TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 }
+            |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
         ), Err("Stack overflow".to_string()));
+    }
+
+    #[test]
+    fn transition_builder_fails_if_transition_function_fails() {
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code: Vec::<u8>::new() });
+
+        assert_eq!(state.transition_builder(
+            |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Error message".to_string())
+        ), Err("Error message".to_string()));
     }
 
     #[test]
