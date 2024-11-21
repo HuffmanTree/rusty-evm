@@ -81,26 +81,17 @@ pub static SAR: TransitionFunction<2, 1> = |_, [shift, value]| Ok(TransitionFunc
 }], jump: 1 });
 // (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
-pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| match TryInto::<usize>::try_into(offset) {
-    Ok(offset) => {
-        let (_, dynamic_cost, res) = context.memory.load_word(offset);
-        Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [res], jump: 1 })
-    },
-    _ => panic!("Out of memory"),
+pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
+    let (_, dynamic_cost, res) = context.memory.load_word(offset)?;
+    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [res], jump: 1 })
 };
-pub static MSTORE: TransitionFunction<2, 0> = |context, [offset, value]| match TryInto::<usize>::try_into(offset) {
-    Ok(offset) => {
-        let (_, dynamic_cost) = context.memory.store_word(offset, value);
-        Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
-    },
-    _ => panic!("Out of memory"),
+pub static MSTORE: TransitionFunction<2, 0> = |context, [offset, value]| {
+    let (_, dynamic_cost) = context.memory.store_word(offset, value)?;
+    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
 };
-pub static MSTORE8: TransitionFunction<2, 0> = |context, [offset, value]| match TryInto::<usize>::try_into(offset) {
-    Ok(offset) => {
-        let (_, dynamic_cost) = context.memory.store_byte(offset, value);
-        Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
-    },
-    _ => panic!("Out of memory"),
+pub static MSTORE8: TransitionFunction<2, 0> = |context, [offset, value]| {
+    let (_, dynamic_cost) = context.memory.store_byte(offset, value)?;
+    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
 };
 pub static SLOAD: TransitionFunction<1, 1> = |context, [key]| {
     let res = context.storage.load(key);
