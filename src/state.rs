@@ -3,7 +3,7 @@ use ethnum::{u256, U256};
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -36,44 +36,11 @@ impl State {
         }
     }
 
-    fn try_jump(&mut self, counter: u256) -> Result<(), String> {
-        let invalid_jumpdest: Result<(), String> = Err("Invalid jump destination".to_string());
-        let counter: usize = match counter.try_into() {
-            Ok(x) => x,
-            _ => return invalid_jumpdest,
-        };
-        self.pc = match self.code.get(counter) {
-            Some(x) => if *x == 0x5B { counter } else { return invalid_jumpdest; },
-            _ => return invalid_jumpdest,
-        };
-        Ok(())
-    }
-
-    fn jump(&mut self) -> Result<TransitionOutput, String> {
-        let counter = match self.stack.pop() {
-            Some(x) => x,
-            _ => return Err("Stack is empty".to_string()),
-        };
-        self.try_jump(counter)?;
-        Ok(TransitionOutput { cost: 8, jump: 0 })
-    }
-
-    fn jumpi(&mut self) -> Result<TransitionOutput, String> {
-        let counter = match self.stack.pop() {
-            Some(x) => x,
-            _ => return Err("Stack is empty".to_string()),
-        };
-        let b = match self.stack.pop() {
-            Some(x) => x,
-            _ => return Err("Stack is empty".to_string()),
-        };
-        if b == U256::ZERO { Ok(TransitionOutput { cost: 10, jump: 1 }) }
-        else { self.try_jump(counter)?; Ok(TransitionOutput { cost: 10, jump: 0 }) }
-    }
-
     fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
         let mut context = TransitionContext {
+            code: &self.code,
             memory: &mut self.memory,
+            pc: &mut self.pc,
             stop_flag: &mut self.stop_flag,
             storage: &mut self.storage,
         };
@@ -125,6 +92,8 @@ impl State {
     fn mstore8(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSTORE8) }
     fn sload(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SLOAD) }
     fn sstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SSTORE) }
+    fn jump(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMP) }
+    fn jumpi(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMPI) }
 }
 
 #[cfg(test)]

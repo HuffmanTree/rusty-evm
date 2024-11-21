@@ -6,7 +6,9 @@ use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,W
 use crate::memory::Memory;
 
 pub struct TransitionContext<'a> {
+    pub code: &'a Vec<u8>,
     pub memory: &'a mut Memory,
+    pub pc: &'a mut usize,
     pub stop_flag: &'a mut bool,
     pub storage: &'a mut Storage,
 }
@@ -25,6 +27,18 @@ pub type TransitionFunction<const I: usize, const O: usize> = fn(&mut Transition
 pub struct TransitionOutput {
     pub cost: usize,
     pub jump: usize,
+}
+
+fn try_jump(code: &Vec<u8>, counter: u256) -> Result<usize, String> {
+    let invalid_jumpdest: Result<usize, String> = Err("Invalid jump destination".to_string());
+    let counter: usize = match counter.try_into() {
+        Ok(x) => x,
+        _ => return invalid_jumpdest,
+    };
+    match code.get(counter) {
+        Some(x) => if *x == 0x5B { Ok(counter) } else { invalid_jumpdest },
+        _ => invalid_jumpdest,
+    }
 }
 
 pub static STOP: TransitionFunction<0, 0> = |context, []| { *context.stop_flag = true; Ok(TransitionFunctionOutput { cost: 0, result: [], jump: 0 }) };
@@ -111,4 +125,16 @@ pub static SSTORE: TransitionFunction<2, 0> = |context, [key, value]| {
         }
         else { 100 };                             // the value changes and the storage slot is dirty
     Ok(TransitionFunctionOutput { cost: base_cost + if warm { 0 } else { 2100 }, result: [], jump: 1 })
+};
+pub static JUMP: TransitionFunction<1, 0> = |context, [counter]| {
+    *context.pc = try_jump(context.code, counter)?;
+    Ok(TransitionFunctionOutput { cost: 8, result: [], jump: 0 })
+};
+pub static JUMPI: TransitionFunction<2, 0> = |context, [counter, b]| {
+    if b == U256::ZERO {
+        Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 1 })
+    } else {
+        *context.pc = try_jump(context.code, counter)?;
+        Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 0 })
+    }
 };
