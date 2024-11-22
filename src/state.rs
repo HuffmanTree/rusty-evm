@@ -4,7 +4,7 @@ use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     remaining_gas: usize,
@@ -37,6 +37,7 @@ impl State {
     fn transition_builder<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
         let mut context = TransitionContext {
             code: &self.transaction.data,
+            gas: &self.remaining_gas,
             memory: &mut self.memory,
             pc: &mut self.pc,
             stop_flag: &mut self.stop_flag,
@@ -96,6 +97,7 @@ impl State {
     fn jumpi(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMPI) }
     fn pc(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(PC) }
     fn msize(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSIZE) }
+    fn gas(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(GAS) }
 }
 
 #[cfg(test)]
@@ -1156,5 +1158,19 @@ mod tests {
         assert_eq!(state.memory.size(), 32);
         assert_eq!(state.msize(), Ok(TransitionOutput { cost: 2, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("32")));
+    }
+
+    #[test]
+    fn gas() {
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 5 } });
+
+        assert_eq!(state.gas(), Ok(TransitionOutput { cost: 2, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("3")));
+
+        assert_eq!(state.gas(), Ok(TransitionOutput { cost: 2, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("1")));
+
+        assert_eq!(state.gas(), Err("Out of gas".to_string()));
+        assert_eq!(state.stack.pop(), None);
     }
 }
