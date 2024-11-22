@@ -4,7 +4,7 @@ use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     remaining_gas: usize,
@@ -98,6 +98,7 @@ impl State {
     fn pc(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(PC) }
     fn msize(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSIZE) }
     fn gas(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(GAS) }
+    fn jumpdest(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMPDEST) }
 }
 
 #[cfg(test)]
@@ -1172,5 +1173,12 @@ mod tests {
 
         assert_eq!(state.gas(), Err("Out of gas".to_string()));
         assert_eq!(state.stack.pop(), None);
+    }
+
+    #[test]
+    fn jumpdest() {
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 1 } });
+
+        assert_eq!(state.jumpdest(), Ok(TransitionOutput { cost: 1, jump: 1 }));
     }
 }

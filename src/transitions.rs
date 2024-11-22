@@ -142,3 +142,4 @@ pub static JUMPI: TransitionFunction<2, 0> = |context, [counter, b]| {
 pub static PC: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [u256::from(TryInto::<u64>::try_into(*context.pc).unwrap())], jump: 1 });
 pub static MSIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [u256::from(TryInto::<u64>::try_into(context.memory.size()).unwrap())], jump: 1 });
 pub static GAS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [if *context.gas >= 2 { u256::from(TryInto::<u64>::try_into(*context.gas - 2).unwrap()) } else { U256::ZERO }], jump: 1 });
+pub static JUMPDEST: TransitionFunction<0, 0> = |_, []| Ok(TransitionFunctionOutput { cost: 1, result: [], jump: 1 });
