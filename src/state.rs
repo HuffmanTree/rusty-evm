@@ -20,11 +20,6 @@ struct StateParameters {
     transaction: Transaction,
 }
 
-struct TransitionBuilderOptions {
-    memory_access: bool,
-    storage_access: bool,
-}
-
 impl State {
     fn new(parameters: StateParameters) -> Self {
         Self {
