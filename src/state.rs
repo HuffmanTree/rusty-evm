@@ -3,7 +3,7 @@ use ethnum::{u256, U256};
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GT, ISZERO, JUMP, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     stack: Stack,
@@ -94,6 +94,8 @@ impl State {
     fn sstore(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(SSTORE) }
     fn jump(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMP) }
     fn jumpi(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(JUMPI) }
+    fn pc(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(PC) }
+    fn msize(&mut self) -> Result<TransitionOutput, String> { self.transition_builder(MSIZE) }
 }
 
 #[cfg(test)]
@@ -1104,5 +1106,30 @@ mod tests {
         state.stack.push(uint!("2")).unwrap();
         assert_eq!(state.jumpi(), Ok(TransitionOutput { cost: 10, jump: 0 }));
         assert_eq!(state.pc, 2);
+    }
+
+    #[test]
+    fn pc() {
+        let code = vec![0_u8, 0_u8, 0x5B, 0_u8];
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code });
+
+        state.stack.push(uint!("2")).unwrap();
+        assert_eq!(state.jump(), Ok(TransitionOutput { cost: 8, jump: 0 }));
+        assert_eq!(state.pc, 2);
+        assert_eq!(state.pc(), Ok(TransitionOutput { cost: 2, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("2")));
+    }
+
+    #[test]
+    fn msize() {
+        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), code: Vec::<u8>::new() });
+        assert_eq!(state.memory.size(), 0);
+
+        state.stack.push(uint!("0xFF")).unwrap();
+        state.stack.push(uint!("0")).unwrap();
+        assert_eq!(state.mstore(), Ok(TransitionOutput { cost: 6, jump: 1 }));
+        assert_eq!(state.memory.size(), 32);
+        assert_eq!(state.msize(), Ok(TransitionOutput { cost: 2, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("32")));
     }
 }

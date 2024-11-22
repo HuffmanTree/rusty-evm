@@ -138,3 +138,5 @@ pub static JUMPI: TransitionFunction<2, 0> = |context, [counter, b]| {
         Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 0 })
     }
 };
+pub static PC: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [u256::from(TryInto::<u64>::try_into(*context.pc).unwrap())], jump: 1 });
+pub static MSIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [u256::from(TryInto::<u64>::try_into(context.memory.size()).unwrap())], jump: 1 });
