@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn handles_gas() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 7 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 7 } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.transition_builder(
             |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_too_much_outputs() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.transition_builder(
             |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.transition_builder(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Error message".to_string())
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn set_the_stop_flag_to_true() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert!(!state.stop_flag);
         assert_eq!(state.stop(), Ok(TransitionOutput { cost: 0, jump: 0 }));
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn adds_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn adds_with_an_overflow() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
         state.stack.push(uint!("1")).unwrap();
 
@@ -194,14 +194,14 @@ mod tests {
 
     #[test]
     fn fails_to_add_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.add(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn multiplies_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn multiplies_with_an_overflow() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
         state.stack.push(uint!("2")).unwrap();
 
@@ -224,14 +224,14 @@ mod tests {
 
     #[test]
     fn fails_to_multiply_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.mul(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn subtracts_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn subtracts_with_an_overflow() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("1")).unwrap();
         state.stack.push(uint!("0")).unwrap();
 
@@ -254,14 +254,14 @@ mod tests {
 
     #[test]
     fn fails_to_subtract_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.sub(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn divides_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn dividing_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
 
@@ -284,14 +284,14 @@ mod tests {
 
     #[test]
     fn fails_to_divide_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.div(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn sign_divides_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn sign_divides_with_negations() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).unwrap();
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).unwrap();
 
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn sign_dividing_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
 
@@ -330,14 +330,14 @@ mod tests {
 
     #[test]
     fn fails_to_sign_divide_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.sdiv(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn takes_the_reminder_of_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn taking_the_reminder_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
 
@@ -360,14 +360,14 @@ mod tests {
 
     #[test]
     fn fails_to_take_the_reminder_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.r#mod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn sign_rems_the_two_numbers_on_top_of_the_stack() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("5")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn sign_rems_with_negations() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD")).unwrap();
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF8")).unwrap();
 
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn sign_reming_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
 
@@ -418,14 +418,14 @@ mod tests {
 
     #[test]
     fn fails_to_sign_rem_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.smod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn adds_modulo() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 100 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 100 } });
         state.stack.push(uint!("8")).unwrap();
         state.stack.push(uint!("10")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn add_modulo_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("4")).unwrap();
@@ -468,14 +468,14 @@ mod tests {
 
     #[test]
     fn fails_to_add_modulo_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.addmod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn multiplies_modulo() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 24 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 24 } });
         state.stack.push(uint!("8")).unwrap();
         state.stack.push(uint!("10")).unwrap();
         state.stack.push(uint!("10")).unwrap();
@@ -500,7 +500,7 @@ mod tests {
 
     #[test]
     fn multiply_modulo_by_zero_returns_zero_by_convention() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.stack.push(uint!("0")).unwrap();
         state.stack.push(uint!("6")).unwrap();
         state.stack.push(uint!("4")).unwrap();
@@ -511,14 +511,14 @@ mod tests {
 
     #[test]
     fn fails_to_multiply_modulo_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.mulmod(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn exponentiates() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 1400 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 1400 } });
         state.stack.push(uint!("2")).unwrap();
         state.stack.push(uint!("10")).unwrap();
 
@@ -570,14 +570,14 @@ mod tests {
 
     #[test]
     fn fails_to_exponentiate_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.exp(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn sign_extends() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 200 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 200 } });
         state.stack.push(uint!("0x41")).unwrap();
         state.stack.push(uint!("0")).unwrap();
 
@@ -623,14 +623,14 @@ mod tests {
 
     #[test]
     fn fails_to_sign_extend_if_not_enough_items() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         assert_eq!(state.signextend(), Err("Stack is empty".to_string()));
     }
 
     #[test]
     fn compare_values() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 100 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 100 } });
         assert_eq!(state.lt(), Err("Stack is empty".to_string()));
         assert_eq!(state.gt(), Err("Stack is empty".to_string()));
 
@@ -683,7 +683,7 @@ mod tests {
 
     #[test]
     fn compare_signed_values() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 100 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 100 } });
         assert_eq!(state.slt(), Err("Stack is empty".to_string()));
         assert_eq!(state.sgt(), Err("Stack is empty".to_string()));
 
@@ -750,7 +750,7 @@ mod tests {
 
     #[test]
     fn bitwise_operations() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 300 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 300 } });
         assert_eq!(state.and(), Err("Stack is empty".to_string()));
         assert_eq!(state.or(), Err("Stack is empty".to_string()));
         assert_eq!(state.xor(), Err("Stack is empty".to_string()));
@@ -916,7 +916,7 @@ mod tests {
 
     #[test]
     fn pop() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
 
         state.stack.push(uint!("42")).unwrap();
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")).unwrap();
@@ -927,7 +927,7 @@ mod tests {
 
     #[test]
     fn mload_no_memory_extension() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.memory.store_word(uint!("0"), uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")).unwrap();
         assert_eq!(state.memory.size(), 32);
 
@@ -941,7 +941,7 @@ mod tests {
 
     #[test]
     fn mload_memory_extension() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.memory.store_word(uint!("0"), uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")).unwrap();
         assert_eq!(state.memory.size(), 32);
 
@@ -955,7 +955,7 @@ mod tests {
 
     #[test]
     fn mload_another_memory_extension() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         state.memory.store_word(uint!("0"), uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")).unwrap();
         assert_eq!(state.memory.size(), 32);
 
@@ -969,7 +969,7 @@ mod tests {
 
     #[test]
     fn mload_big_memory_extension() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 51 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 51 } });
         state.memory.store_word(uint!("0"), uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")).unwrap();
         assert_eq!(state.memory.size(), 32);
 
@@ -982,7 +982,7 @@ mod tests {
 
     #[test]
     fn mstore() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         assert_eq!(state.memory.size(), 0);
 
         state.stack.push(uint!("0xFF")).unwrap();
@@ -1002,7 +1002,7 @@ mod tests {
 
     #[test]
     fn mstore_empty_memory() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         assert_eq!(state.memory.size(), 0);
 
         state.stack.push(uint!("0xFF")).unwrap();
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn mstore_big_memory_extension() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 544 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 544 } });
         assert_eq!(state.memory.size(), 0);
 
         state.stack.push(uint!("0xABFF")).unwrap();
@@ -1027,7 +1027,7 @@ mod tests {
 
     #[test]
     fn mstore8() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         assert_eq!(state.memory.size(), 0);
 
         state.stack.push(uint!("0xFFAB")).unwrap();
@@ -1049,7 +1049,7 @@ mod tests {
     fn sload() {
         let mut initial_storage = HashMap::<u256, u256>::new();
         initial_storage.insert(uint!("42"), uint!("0xAB"));
-        let mut state = State::new(StateParameters { initial_storage, transaction: Transaction { data: Vec::<u8>::new(), gas: 2200 } });
+        let mut state = State::new(StateParameters { initial_storage, transaction: Transaction { data: Default::default(), gas: 2200 } });
 
         state.stack.push(uint!("42")).unwrap();
         assert_eq!(state.sload(), Ok(TransitionOutput { cost: 2100, jump: 1 }));
@@ -1062,7 +1062,7 @@ mod tests {
 
     #[test]
     fn sstore() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 22200 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 22200 } });
 
         state.stack.push(uint!("0xFFFF")).unwrap();
         state.stack.push(uint!("0")).unwrap();
@@ -1079,7 +1079,7 @@ mod tests {
     fn sstore_with_original_value() {
         let mut initial_storage = HashMap::<u256, u256>::new();
         initial_storage.insert(uint!("1"), uint!("55"));
-        let mut state = State::new(StateParameters { initial_storage, transaction: Transaction { data: Vec::<u8>::new(), gas: 5000 } });
+        let mut state = State::new(StateParameters { initial_storage, transaction: Transaction { data: Default::default(), gas: 5000 } });
 
         state.stack.push(uint!("10")).unwrap();
         state.stack.push(uint!("1")).unwrap();
@@ -1090,7 +1090,7 @@ mod tests {
     #[test]
     fn jump() {
         let transaction = Transaction { data: vec![0_u8, 0_u8, 0x5B, 0_u8], gas: 20 };
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction });
         assert_eq!(state.pc, 0);
 
         state.stack.push(uint!("0xFFFFFFFFFFFFFFFFFFFF")).unwrap();
@@ -1110,7 +1110,7 @@ mod tests {
     #[test]
     fn jumpi() {
         let transaction = Transaction { data: vec![0_u8, 0_u8, 0x5B, 0_u8], gas: 20 };
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction });
         assert_eq!(state.pc, 0);
 
         state.stack.push(uint!("0")).unwrap();
@@ -1139,7 +1139,7 @@ mod tests {
     #[test]
     fn pc() {
         let transaction = Transaction { data: vec![0_u8, 0_u8, 0x5B, 0_u8], gas: 20 };
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction });
 
         state.stack.push(uint!("2")).unwrap();
         assert_eq!(state.jump(), Ok(TransitionOutput { cost: 8, jump: 0 }));
@@ -1150,7 +1150,7 @@ mod tests {
 
     #[test]
     fn msize() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
         assert_eq!(state.memory.size(), 0);
 
         state.stack.push(uint!("0xFF")).unwrap();
@@ -1163,7 +1163,7 @@ mod tests {
 
     #[test]
     fn gas() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 5 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 5 } });
 
         assert_eq!(state.gas(), Ok(TransitionOutput { cost: 2, jump: 1 }));
         assert_eq!(state.stack.pop(), Some(uint!("3")));
@@ -1177,7 +1177,7 @@ mod tests {
 
     #[test]
     fn jumpdest() {
-        let mut state = State::new(StateParameters { initial_storage: HashMap::<u256, u256>::new(), transaction: Transaction { data: Vec::<u8>::new(), gas: 1 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 1 } });
 
         assert_eq!(state.jumpdest(), Ok(TransitionOutput { cost: 1, jump: 1 }));
     }

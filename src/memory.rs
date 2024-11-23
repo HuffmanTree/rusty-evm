@@ -1,12 +1,10 @@
 use ethnum::{u256, U256};
 
-pub struct Memory {
-    arr: Vec<u8>,
-}
+pub struct Memory(Vec<u8>);
 
 impl Memory {
     pub fn new() -> Self {
-        Self { arr: Vec::<u8>::new() }
+        Self(Default::default())
     }
 
     fn extension_size(&self, offset: usize, size: usize) -> usize {
@@ -19,7 +17,7 @@ impl Memory {
     }
 
     pub fn size(&self) -> usize {
-        self.arr.len()
+        self.0.len()
     }
 
     fn try_offset(offset: u256, size: u8) -> Result<usize, String> {
@@ -37,19 +35,19 @@ impl Memory {
     pub fn store_byte(&mut self, offset: u256, value: u256) -> Result<(usize, usize), String> {
         let offset = Memory::try_offset(offset, 1)?;
         let extension_size = self.extension_size(offset, 1);
-        self.arr.append(&mut vec![0; extension_size]);
+        self.0.append(&mut vec![0; extension_size]);
 
-        self.arr[offset] = (value & 0xFF).try_into().unwrap();
+        self.0[offset] = (value & 0xFF).try_into().unwrap();
         Ok((extension_size, Memory::extension_cost(extension_size)))
     }
 
     pub fn store_word(&mut self, offset: u256, mut value: u256) -> Result<(usize, usize), String> {
         let offset = Memory::try_offset(offset, 32)?;
         let extension_size = self.extension_size(offset, 32);
-        self.arr.append(&mut vec![0; extension_size]);
+        self.0.append(&mut vec![0; extension_size]);
 
         for i in 0..32 {
-            self.arr[offset + 31 - i] = (value & 0xFF).try_into().unwrap();
+            self.0[offset + 31 - i] = (value & 0xFF).try_into().unwrap();
             value >>= 8;
         }
         Ok((extension_size, Memory::extension_cost(extension_size)))
@@ -58,12 +56,12 @@ impl Memory {
     pub fn load_word(&mut self, offset: u256) -> Result<(usize, usize, u256), String> {
         let offset = Memory::try_offset(offset, 32)?;
         let extension_size = self.extension_size(offset, 32);
-        self.arr.append(&mut vec![0; extension_size]);
+        self.0.append(&mut vec![0; extension_size]);
 
         let mut res = U256::ZERO;
         for i in 0..32 {
             res <<= 8;
-            res |= u256::from(match self.arr.get(offset + i) {
+            res |= u256::from(match self.0.get(offset + i) {
                 Some(v) => *v,
                 None => 0,
             });
@@ -75,7 +73,7 @@ impl Memory {
         let mut res = Vec::<u8>::new();
 
         for i in 0..size {
-            res.push(*self.arr.get(offset + i).unwrap_or(&0_u8));
+            res.push(*self.0.get(offset + i).unwrap_or(&0_u8));
         }
 
         res
@@ -91,35 +89,35 @@ mod tests {
     fn stores_a_word() {
         let mut memory = Memory::new();
 
-        assert_eq!(memory.arr.len(), 0);
+        assert_eq!(memory.0.len(), 0);
         assert_eq!(memory.store_word(uint!("4"), uint!("0x0000000000000000000000000000000000000000000000000000000004050607")), Ok((64, 6)));
-        assert_eq!(memory.arr, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(memory.0, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]
     fn fails_to_store_a_word_out_of_memory() {
-        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.store_word(uint!("0x10000000000000000"), uint!("0xFF")), Err("Memory out of bounds".to_string()));
     }
 
     #[test]
     fn loads_32_bytes_padded_with_zeros() {
-        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.load_word(uint!("6")), Ok((32, 3, uint!("0x0607000000000000000000000000000000000000000000000000000000000000"))));
     }
 
     #[test]
     fn fails_to_load_out_of_memory() {
-        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.load_word(uint!("0x10000000000000000")), Err("Memory out of bounds".to_string()));
     }
 
     #[test]
     fn access_an_arbitrary_number_of_bytes() {
-        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0] };
+        let memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0]);
 
         assert_eq!(memory.access(2, 5), vec![0, 0, 4, 5, 6]);
         assert_eq!(memory.access(2, 10), vec![0, 0, 4, 5, 6, 7, 0, 0, 0, 0]);
@@ -127,14 +125,14 @@ mod tests {
 
     #[test]
     fn returns_the_current_size() {
-        let memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0] };
+        let memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0]);
 
         assert_eq!(memory.size(), 11);
     }
 
     #[test]
     fn computes_extension_size() {
-        let memory = Memory { arr: vec![0; 32] };
+        let memory = Memory(vec![0; 32]);
 
         assert_eq!(memory.extension_size(0, 32), 0);
         assert_eq!(memory.extension_size(1, 32), 32);
@@ -150,15 +148,15 @@ mod tests {
         let mut memory = Memory::new();
 
         assert_eq!(memory.store_byte(uint!("2"), uint!("0xFFAB")), Ok((32, 3)));
-        assert_eq!(memory.arr, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(memory.0, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.store_byte(uint!("32"), uint!("0xFFAB")), Ok((32, 3)));
-        assert_eq!(memory.arr, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(memory.0, vec![0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]
     fn fails_to_store_a_byte_out_of_memory() {
-        let mut memory = Memory { arr: vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.store_byte(uint!("0x10000000000000000"), uint!("0xFF")), Err("Memory out of bounds".to_string()));
     }
