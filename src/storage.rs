@@ -8,7 +8,7 @@ pub struct StorageValue {
     pub warm: bool,
 }
 
-pub struct Storage(HashMap<u256, StorageValue>);
+pub struct Storage(pub HashMap<u256, StorageValue>);
 
 impl Storage {
     pub fn new(init: HashMap::<u256, u256>) -> Self {
