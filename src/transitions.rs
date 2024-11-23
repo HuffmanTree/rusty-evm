@@ -2,6 +2,7 @@ use std::cmp::min;
 
 use ethnum::{u256,U256};
 use crate::storage::Storage;
+use crate::transient::Transient;
 use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
 use crate::memory::Memory;
 
@@ -12,6 +13,7 @@ pub struct TransitionContext<'a> {
     pub pc: &'a mut usize,
     pub stop_flag: &'a mut bool,
     pub storage: &'a mut Storage,
+    pub transient: &'a mut Transient,
 }
 
 type TransitionFunctionInput<const I: usize> = [u256; I];
@@ -144,6 +146,11 @@ pub static PC: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOut
 pub static MSIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [u256::from(TryInto::<u64>::try_into(context.memory.size()).unwrap())], jump: 1 });
 pub static GAS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [if *context.gas >= 2 { u256::from(TryInto::<u64>::try_into(*context.gas - 2).unwrap()) } else { U256::ZERO }], jump: 1 });
 pub static JUMPDEST: TransitionFunction<0, 0> = |_, []| Ok(TransitionFunctionOutput { cost: 1, result: [], jump: 1 });
+pub static TLOAD: TransitionFunction<1, 1> = |context, [key]| Ok(TransitionFunctionOutput { cost: 100, result: [context.transient.load(key)], jump: 1 });
+pub static TSTORE: TransitionFunction<2, 0> = |context, [key, value]| {
+    context.transient.store(key, value);
+    Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 })
+};
 
 #[cfg(test)]
 mod tests {
@@ -156,7 +163,7 @@ mod tests {
 
     #[test]
     fn stop() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert!(!*context.stop_flag);
         assert_eq!(STOP(&mut context, []), Ok(TransitionFunctionOutput { cost: 0, result: [], jump: 0 }));
@@ -165,7 +172,7 @@ mod tests {
 
     #[test]
     fn add() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(ADD(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("16")], jump: 1 }));
         assert_eq!(ADD(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("1")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -173,7 +180,7 @@ mod tests {
 
     #[test]
     fn mul() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(MUL(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("60")], jump: 1 }));
         assert_eq!(MUL(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")], jump: 1 }));
@@ -181,7 +188,7 @@ mod tests {
 
     #[test]
     fn sub() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SUB(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("4")], jump: 1 }));
         assert_eq!(SUB(&mut context, [uint!("0"), uint!("1")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")], jump: 1 }));
@@ -189,7 +196,7 @@ mod tests {
 
     #[test]
     fn div() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(DIV(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("1")], jump: 1 }));
         assert_eq!(DIV(&mut context, [uint!("6"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("0")], jump: 1 })); // dividing by zero returns zero by convention
@@ -197,7 +204,7 @@ mod tests {
 
     #[test]
     fn sdiv() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SDIV(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("1")], jump: 1 }));
         assert_eq!(SDIV(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("2")], jump: 1 }));
@@ -207,7 +214,7 @@ mod tests {
 
     #[test]
     fn r#mod() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(MOD(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("4")], jump: 1 }));
         assert_eq!(MOD(&mut context, [uint!("6"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("0")], jump: 1 })); // modulo zero returns zero by convention
@@ -215,7 +222,7 @@ mod tests {
 
     #[test]
     fn smod() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SMOD(&mut context, [uint!("10"), uint!("6")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("4")], jump: 1 }));
         assert_eq!(SMOD(&mut context, [uint!("3"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("1")], jump: 1 }));
@@ -227,7 +234,7 @@ mod tests {
 
     #[test]
     fn addmod() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &100, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &100, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(ADDMOD(&mut context, [uint!("10"), uint!("10"), uint!("8")]), Ok(TransitionFunctionOutput { cost: 8, result: [uint!("4")], jump: 1 }));
         assert_eq!(ADDMOD(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("2"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 8, result: [uint!("1")], jump: 1 }));
@@ -238,7 +245,7 @@ mod tests {
 
     #[test]
     fn mulmod() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &100, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &100, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(MULMOD(&mut context, [uint!("10"), uint!("10"), uint!("8")]), Ok(TransitionFunctionOutput { cost: 8, result: [uint!("4")], jump: 1 }));
         assert_eq!(MULMOD(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("12")]), Ok(TransitionFunctionOutput { cost: 8, result: [uint!("9")], jump: 1 }));
@@ -248,7 +255,7 @@ mod tests {
 
     #[test]
     fn exp() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &1400, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &1400, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(EXP(&mut context, [uint!("10"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 60, result: [uint!("100")], jump: 1 }));
         assert_eq!(EXP(&mut context, [uint!("2"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 60, result: [uint!("4")], jump: 1 }));
@@ -262,7 +269,7 @@ mod tests {
 
     #[test]
     fn signextend() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &200, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &200, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SIGNEXTEND(&mut context, [uint!("0"), uint!("0x41")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("0x41")], jump: 1 }));
         assert_eq!(SIGNEXTEND(&mut context, [uint!("0"), uint!("0xEF41")]), Ok(TransitionFunctionOutput { cost: 5, result: [uint!("0x41")], jump: 1 }));
@@ -275,7 +282,7 @@ mod tests {
 
     #[test]
     fn lt() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(LT(&mut context, [uint!("9"), uint!("10")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(LT(&mut context, [uint!("10"), uint!("10")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -283,7 +290,7 @@ mod tests {
 
     #[test]
     fn gt() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(GT(&mut context, [uint!("10"), uint!("9")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(GT(&mut context, [uint!("10"), uint!("10")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -291,7 +298,7 @@ mod tests {
 
     #[test]
     fn eq() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(EQ(&mut context, [uint!("10"), uint!("10")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(EQ(&mut context, [uint!("10"), uint!("3")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -299,7 +306,7 @@ mod tests {
 
     #[test]
     fn iszero() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &20, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(ISZERO(&mut context, [uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(ISZERO(&mut context, [uint!("3")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -307,7 +314,7 @@ mod tests {
 
     #[test]
     fn slt() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SLT(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(SLT(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -318,7 +325,7 @@ mod tests {
 
     #[test]
     fn sgt() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SGT(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
         assert_eq!(SGT(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
@@ -329,7 +336,7 @@ mod tests {
 
     #[test]
     fn and() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(AND(&mut context, [uint!("0xFF"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFF")], jump: 1 }));
         assert_eq!(AND(&mut context, [uint!("0"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -338,7 +345,7 @@ mod tests {
 
     #[test]
     fn or() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(OR(&mut context, [uint!("0xFF"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFF")], jump: 1 }));
         assert_eq!(OR(&mut context, [uint!("0"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFF")], jump: 1 }));
@@ -347,7 +354,7 @@ mod tests {
 
     #[test]
     fn xor() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(XOR(&mut context, [uint!("0xFF"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
         assert_eq!(XOR(&mut context, [uint!("0"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFF")], jump: 1 }));
@@ -356,7 +363,7 @@ mod tests {
 
     #[test]
     fn not() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(NOT(&mut context, [uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")], jump: 1 }));
         assert_eq!(NOT(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
@@ -365,7 +372,7 @@ mod tests {
 
     #[test]
     fn byte() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(BYTE(&mut context, [uint!("16"), uint!("0x0112233445566778899AABBCCDDEEFF0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(BYTE(&mut context, [uint!("31"), uint!("0x0112233445566778899AABBCCDDEEFF0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xF0")], jump: 1 }));
@@ -377,7 +384,7 @@ mod tests {
 
     #[test]
     fn shl() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SHL(&mut context, [uint!("1"), uint!("1")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2")], jump: 1 }));
         assert_eq!(SHL(&mut context, [uint!("4"), uint!("0xFF00000000000000000000000000000000000000000000000000000000000000")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xF000000000000000000000000000000000000000000000000000000000000000")], jump: 1 }));
@@ -385,7 +392,7 @@ mod tests {
 
     #[test]
     fn shr() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SHR(&mut context, [uint!("1"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(SHR(&mut context, [uint!("4"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x0F")], jump: 1 }));
@@ -393,7 +400,7 @@ mod tests {
 
     #[test]
     fn sar() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SAR(&mut context, [uint!("1"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1")], jump: 1 }));
         assert_eq!(SAR(&mut context, [uint!("4"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")], jump: 1 }));
@@ -406,35 +413,35 @@ mod tests {
 
     #[test]
     fn pop() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(POP(&mut context, [uint!("42")]), Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 }));
     }
 
     #[test]
     fn mload_no_memory_extension() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 32);
         assert_eq!(MLOAD(&mut context, [uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x4DBDB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A02369")], jump: 1 }));
         assert_eq!(context.memory.size(), 32);
         assert_eq!(context.memory.0, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]);
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 32);
         assert_eq!(MLOAD(&mut context, [uint!("2")]), Ok(TransitionFunctionOutput { cost: 6, result: [uint!("0xB8BE3125A5DE53A0236934525103F67CF6E94DBDB8BE3125A5DE53A023690000")], jump: 1 }));
         assert_eq!(context.memory.size(), 64);
         assert_eq!(context.memory.0, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 32);
         assert_eq!(MLOAD(&mut context, [uint!("30")]), Ok(TransitionFunctionOutput { cost: 6, result: [uint!("0x2369000000000000000000000000000000000000000000000000000000000000")], jump: 1 }));
         assert_eq!(context.memory.size(), 64);
         assert_eq!(context.memory.0, vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69, 0x34, 0x52, 0x51, 0x03, 0xF6, 0x7C, 0xF6, 0xE9, 0x4D, 0xBD, 0xB8, 0xBE, 0x31, 0x25, 0xA5, 0xDE, 0x53, 0xA0, 0x23, 0x69]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 32);
         assert_eq!(MLOAD(&mut context, [uint!("500")]), Ok(TransitionFunctionOutput { cost: 51, result: [uint!("0")], jump: 1 }));
@@ -444,7 +451,7 @@ mod tests {
 
     #[test]
     fn mstore() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 0);
         assert_eq!(MSTORE(&mut context, [uint!("0"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
@@ -454,14 +461,14 @@ mod tests {
         assert_eq!(context.memory.size(), 64);
         assert_eq!(context.memory.0, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 0);
         assert_eq!(MSTORE(&mut context, [uint!("3"), uint!("0xFF")]), Ok(TransitionFunctionOutput { cost: 9, result: [], jump: 1 }));
         assert_eq!(context.memory.size(), 64);
         assert_eq!(context.memory.0, vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 0);
         assert_eq!(MSTORE(&mut context, [uint!("500"), uint!("0xABFF")]), Ok(TransitionFunctionOutput { cost: 54, result: [], jump: 1 }));
@@ -471,7 +478,7 @@ mod tests {
 
     #[test]
     fn mstore8() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(context.memory.size(), 0);
         assert_eq!(MSTORE8(&mut context, [uint!("0"), uint!("0xFFAB")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
@@ -486,7 +493,7 @@ mod tests {
     fn sload() {
         let mut initial_storage = HashMap::<u256, u256>::new();
         initial_storage.insert(uint!("42"), uint!("0xAB"));
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage), transient: &mut Transient::new() };
 
         assert_eq!(SLOAD(&mut context, [uint!("42")]), Ok(TransitionFunctionOutput { cost: 2100, result: [uint!("0xAB")], jump: 1 }));
         assert_eq!(SLOAD(&mut context, [uint!("42")]), Ok(TransitionFunctionOutput { cost: 100, result: [uint!("0xAB")], jump: 1 }));
@@ -494,7 +501,7 @@ mod tests {
 
     #[test]
     fn sstore() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(SSTORE(&mut context, [uint!("0"), uint!("0xFFFF")]), Ok(TransitionFunctionOutput { cost: 22100, result: [], jump: 1 })); // clean storage - no previous value - cold slot
         assert_eq!(context.storage.load(uint!("0")), StorageValue { original_value: uint!("0"), value: uint!("0xFFFF"), warm: true });
@@ -505,14 +512,14 @@ mod tests {
 
         let mut initial_storage = HashMap::<u256, u256>::new();
         initial_storage.insert(uint!("1"), uint!("55"));
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage), transient: &mut Transient::new() };
 
         assert_eq!(SSTORE(&mut context, [uint!("1"), uint!("10")]), Ok(TransitionFunctionOutput { cost: 5000, result: [], jump: 1 })); // clean storage - different value - cold slot
         assert_eq!(context.storage.load(uint!("1")), StorageValue { original_value: uint!("55"), value: uint!("10"), warm: true });
 
         let mut initial_storage = HashMap::<u256, u256>::new();
         initial_storage.insert(uint!("1"), uint!("55"));
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(initial_storage), transient: &mut Transient::new() };
 
         assert_eq!(SSTORE(&mut context, [uint!("1"), uint!("55")]), Ok(TransitionFunctionOutput { cost: 2200, result: [], jump: 1 })); // clean storage - same value - cold slot
         assert_eq!(context.storage.load(uint!("1")), StorageValue { original_value: uint!("55"), value: uint!("55"), warm: true });
@@ -520,7 +527,7 @@ mod tests {
 
     #[test]
     fn jump() {
-        let mut context = TransitionContext { code: &vec![0_u8, 0_u8, 0x5B, 0_u8], gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &vec![0_u8, 0_u8, 0x5B, 0_u8], gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(*context.pc, 0);
         assert_eq!(JUMP(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFF")]), Err("Invalid jump destination".to_string())); // not a usize
@@ -535,7 +542,7 @@ mod tests {
 
     #[test]
     fn jumpi() {
-        let mut context = TransitionContext { code: &vec![0_u8, 0_u8, 0x5B, 0_u8], gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &vec![0_u8, 0_u8, 0x5B, 0_u8], gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(*context.pc, 0);
         assert_eq!(JUMPI(&mut context, [uint!("2"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 1 })); // jump condition is false
@@ -552,14 +559,14 @@ mod tests {
 
     #[test]
     fn pc() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 30, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 30, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(PC(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("30")], jump: 1 }));
     }
 
     #[test]
     fn msize() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0; 64]), pc: &mut 30, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0; 64]), pc: &mut 30, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(MSIZE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("64")], jump: 1 }));
     }
@@ -567,28 +574,46 @@ mod tests {
 
     #[test]
     fn gas() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &5, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &5, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(GAS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("3")], jump: 1 }));
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &3, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &3, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(GAS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("1")], jump: 1 }));
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &1, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &1, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(GAS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0")], jump: 1 }));
 
-        let mut context = TransitionContext { code: &Default::default(), gas: &0, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &0, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(GAS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0")], jump: 1 }));
     }
 
     #[test]
     fn jumpdest() {
-        let mut context = TransitionContext { code: &Default::default(), gas: &5, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()) };
+        let mut context = TransitionContext { code: &Default::default(), gas: &5, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(JUMPDEST(&mut context, []), Ok(TransitionFunctionOutput { cost: 1, result: [], jump: 1 }));
 
+    }
+
+    #[test]
+    fn tload() {
+        let mut initial_transient = HashMap::<u256, u256>::new();
+        initial_transient.insert(uint!("42"), uint!("0xAB"));
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient(initial_transient) };
+
+        assert_eq!(TLOAD(&mut context, [uint!("42")]), Ok(TransitionFunctionOutput { cost: 100, result: [uint!("0xAB")], jump: 1 }));
+        assert_eq!(TLOAD(&mut context, [uint!("45")]), Ok(TransitionFunctionOutput { cost: 100, result: [uint!("0")], jump: 1 }));
+    }
+
+    #[test]
+    fn tstore() {
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(TSTORE(&mut context, [uint!("1"), uint!("55")]), Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 }));
+        assert_eq!(context.transient.0.get(&uint!("1")), Some(&uint!("55")));
     }
 }

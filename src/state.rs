@@ -4,6 +4,7 @@ use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
+use crate::transient::Transient;
 use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
@@ -14,6 +15,7 @@ struct State {
     stop_flag: bool,
     pc: usize,
     transaction: Transaction,
+    transient: Transient,
 }
 
 struct StateParameters {
@@ -31,6 +33,7 @@ impl State {
             stop_flag: false,
             pc: 0,
             transaction: parameters.transaction,
+            transient: Transient::new(),
         }
     }
 
@@ -42,6 +45,7 @@ impl State {
             pc: &mut self.pc,
             stop_flag: &mut self.stop_flag,
             storage: &mut self.storage,
+            transient: &mut self.transient,
         };
         let mut input = [U256::ZERO; I];
         for i in 0..I {
