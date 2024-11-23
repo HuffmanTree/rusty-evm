@@ -1,6 +1,6 @@
 use ethnum::{u256, U256};
 
-pub struct Memory(Vec<u8>);
+pub struct Memory(pub Vec<u8>);
 
 impl Memory {
     pub fn new() -> Self {
