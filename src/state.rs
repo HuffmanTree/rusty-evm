@@ -5,7 +5,7 @@ use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::transient::Transient;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, PUSH0, PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
 
 struct State {
     remaining_gas: usize,
@@ -103,6 +103,39 @@ impl State {
     fn msize(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(MSIZE) }
     fn gas(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(GAS) }
     fn jumpdest(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(JUMPDEST) }
+    fn push0(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH0) }
+    fn push1(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH1) }
+    fn push2(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH2) }
+    fn push3(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH3) }
+    fn push4(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH4) }
+    fn push5(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH5) }
+    fn push6(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH6) }
+    fn push7(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH7) }
+    fn push8(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH8) }
+    fn push9(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH9) }
+    fn push10(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH10) }
+    fn push11(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH11) }
+    fn push12(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH12) }
+    fn push13(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH13) }
+    fn push14(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH14) }
+    fn push15(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH15) }
+    fn push16(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH16) }
+    fn push17(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH17) }
+    fn push18(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH18) }
+    fn push19(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH19) }
+    fn push20(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH20) }
+    fn push21(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH21) }
+    fn push22(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH22) }
+    fn push23(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH23) }
+    fn push24(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH24) }
+    fn push25(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH25) }
+    fn push26(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH26) }
+    fn push27(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH27) }
+    fn push28(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH28) }
+    fn push29(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH29) }
+    fn push30(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH30) }
+    fn push31(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH31) }
+    fn push32(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(PUSH32) }
 }
 
 #[cfg(test)]

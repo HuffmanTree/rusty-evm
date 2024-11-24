@@ -1,6 +1,5 @@
 use std::cmp::min;
-
-use ethnum::{u256,U256};
+use ethnum::{u256, U256};
 use crate::storage::Storage;
 use crate::transient::Transient;
 use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
@@ -43,6 +42,15 @@ fn try_jump(code: &Vec<u8>, counter: u256) -> Result<usize, String> {
         Some(x) => if *x == 0x5B { Ok(counter) } else { invalid_jumpdest },
         _ => invalid_jumpdest,
     }
+}
+
+fn push_n(pc: usize, code: &Vec<u8>, n: usize) -> TransitionFunctionOutput<1> {
+    let mut res = U256::ZERO;
+    for i in 0..n {
+        res <<= 8;
+        res |= u256::from(*code.get(pc + i + 1).unwrap_or(&0_u8));
+    };
+    TransitionFunctionOutput { cost: if n == 0 { 2 } else { 3 }, result: [res], jump: n + 1 }
 }
 
 pub static STOP: TransitionFunction<0, 0> = |context, []| { *context.stop_flag = true; Ok(TransitionFunctionOutput { cost: 0, result: [], jump: 0 }) };
@@ -97,7 +105,7 @@ pub static SAR: TransitionFunction<2, 1> = |_, [shift, value]| Ok(TransitionFunc
     (Err(_), false) => U256::ZERO,
     (Err(_), true) => U256::MAX,
 }], jump: 1 });
-// (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
+// TODO (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let (_, dynamic_cost, res) = context.memory.load_word(offset)?;
@@ -151,6 +159,40 @@ pub static TSTORE: TransitionFunction<2, 0> = |context, [key, value]| {
     context.transient.store(key, value);
     Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 })
 };
+// TODO (fguerin - 23/11/2024) Implement opcode 0x5E
+pub static PUSH0: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 0));
+pub static PUSH1: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 1));
+pub static PUSH2: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 2));
+pub static PUSH3: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 3));
+pub static PUSH4: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 4));
+pub static PUSH5: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 5));
+pub static PUSH6: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 6));
+pub static PUSH7: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 7));
+pub static PUSH8: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 8));
+pub static PUSH9: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 9));
+pub static PUSH10: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 10));
+pub static PUSH11: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 11));
+pub static PUSH12: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 12));
+pub static PUSH13: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 13));
+pub static PUSH14: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 14));
+pub static PUSH15: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 15));
+pub static PUSH16: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 16));
+pub static PUSH17: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 17));
+pub static PUSH18: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 18));
+pub static PUSH19: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 19));
+pub static PUSH20: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 20));
+pub static PUSH21: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 21));
+pub static PUSH22: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 22));
+pub static PUSH23: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 23));
+pub static PUSH24: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 24));
+pub static PUSH25: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 25));
+pub static PUSH26: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 26));
+pub static PUSH27: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 27));
+pub static PUSH28: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 28));
+pub static PUSH29: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 29));
+pub static PUSH30: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 30));
+pub static PUSH31: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 31));
+pub static PUSH32: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, context.code, 32));
 
 #[cfg(test)]
 mod tests {
@@ -615,5 +657,44 @@ mod tests {
 
         assert_eq!(TSTORE(&mut context, [uint!("1"), uint!("55")]), Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 }));
         assert_eq!(context.transient.0.get(&uint!("1")), Some(&uint!("55")));
+    }
+
+    #[test]
+    fn push_n() {
+        let mut context = TransitionContext { code: &vec![1, 0x59, 0x36, 0xD2, 0xA1, 0xC5, 0xC3, 0xAF, 0x2E, 0xEB, 0x31, 0x55, 0xB9, 0x6B, 0x30, 0x01, 0xA3, 0x47, 0xD6, 0xFE, 0x75, 0xE5, 0x18, 0x59, 0xEB, 0xBA, 0x81, 0x55, 0x13, 0x1A, 0x8E, 0x05, 0x56], gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(PUSH0(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0")], jump: 1 }));
+        assert_eq!(PUSH1(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x59")], jump: 2 }));
+        assert_eq!(PUSH2(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936")], jump: 3 }));
+        assert_eq!(PUSH3(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2")], jump: 4 }));
+        assert_eq!(PUSH4(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1")], jump: 5 }));
+        assert_eq!(PUSH5(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5")], jump: 6 }));
+        assert_eq!(PUSH6(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3")], jump: 7 }));
+        assert_eq!(PUSH7(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF")], jump: 8 }));
+        assert_eq!(PUSH8(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2E")], jump: 9 }));
+        assert_eq!(PUSH9(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB")], jump: 10 }));
+        assert_eq!(PUSH10(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB31")], jump: 11 }));
+        assert_eq!(PUSH11(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155")], jump: 12 }));
+        assert_eq!(PUSH12(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B9")], jump: 13 }));
+        assert_eq!(PUSH13(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B")], jump: 14 }));
+        assert_eq!(PUSH14(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B30")], jump: 15 }));
+        assert_eq!(PUSH15(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001")], jump: 16 }));
+        assert_eq!(PUSH16(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A3")], jump: 17 }));
+        assert_eq!(PUSH17(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347")], jump: 18 }));
+        assert_eq!(PUSH18(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6")], jump: 19 }));
+        assert_eq!(PUSH19(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE")], jump: 20 }));
+        assert_eq!(PUSH20(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75")], jump: 21 }));
+        assert_eq!(PUSH21(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E5")], jump: 22 }));
+        assert_eq!(PUSH22(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E518")], jump: 23 }));
+        assert_eq!(PUSH23(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859")], jump: 24 }));
+        assert_eq!(PUSH24(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EB")], jump: 25 }));
+        assert_eq!(PUSH25(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA")], jump: 26 }));
+        assert_eq!(PUSH26(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA81")], jump: 27 }));
+        assert_eq!(PUSH27(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA8155")], jump: 28 }));
+        assert_eq!(PUSH28(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA815513")], jump: 29 }));
+        assert_eq!(PUSH29(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA8155131A")], jump: 30 }));
+        assert_eq!(PUSH30(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA8155131A8E")], jump: 31 }));
+        assert_eq!(PUSH31(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA8155131A8E05")], jump: 32 }));
+        assert_eq!(PUSH32(&mut context, []), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0x5936D2A1C5C3AF2EEB3155B96B3001A347D6FE75E51859EBBA8155131A8E0556")], jump: 33 }));
     }
 }
