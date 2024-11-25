@@ -57,7 +57,7 @@ impl State {
         let output = f(&mut context, input)?;
         if output.cost > self.remaining_gas { self.remaining_gas = 0; return Err("Out of gas".to_string()); }
         self.remaining_gas -= output.cost;
-        for o in 0..O {
+        for o in (0..O).rev() {
             if let Err(e) = self.stack.push(output.result[o]) {
                 return Err(e.to_string());
             }
@@ -143,7 +143,7 @@ mod tests {
     use crate::transitions::TransitionFunctionOutput;
 
     use super::*;
-    use ethnum::u256;
+    use ethnum::{u256, uint};
 
     #[test]
     fn handles_gas() {
@@ -195,5 +195,22 @@ mod tests {
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Error message".to_string())
         ), Err("Error message".to_string()));
+    }
+
+    #[test]
+    fn preserve_stack_order() {
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
+
+        state.stack.push(uint!("0x0C")).unwrap();
+        state.stack.push(uint!("0x0B")).unwrap();
+        state.stack.push(uint!("0x0A")).unwrap();
+
+        assert_eq!(state.execute_transition(
+            |_, input: [u256; 3]| Ok(TransitionFunctionOutput { cost: 3, result: input, jump: 1 })
+        ), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.stack.pop(), Some(uint!("0x0A")));
+        assert_eq!(state.stack.pop(), Some(uint!("0x0B")));
+        assert_eq!(state.stack.pop(), Some(uint!("0x0C")));
+        assert_eq!(state.stack.pop(), None);
     }
 }
