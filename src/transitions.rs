@@ -64,6 +64,11 @@ fn dup_n<const I: usize, const O: usize>(input: [u256; I]) -> TransitionFunction
     TransitionFunctionOutput { cost: 3, result: res, jump: 1 }
 }
 
+fn swap_n<const N: usize>(mut input: [u256; N]) -> TransitionFunctionOutput<N> {
+    input.swap(0, N - 1);
+    TransitionFunctionOutput { cost: 3, result: input, jump: 1 }
+}
+
 pub static STOP: TransitionFunction<0, 0> = |context, []| { *context.stop_flag = true; Ok(TransitionFunctionOutput { cost: 0, result: [], jump: 0 }) };
 pub static ADD: TransitionFunction<2, 1> = |_, [a, b]| Ok(TransitionFunctionOutput { cost: 3, result: [a.wrapping_add(b)], jump: 1 });
 pub static MUL: TransitionFunction<2, 1> = |_, [a, b]| Ok(TransitionFunctionOutput { cost: 5, result: [a.wrapping_mul(b)], jump: 1 });
@@ -220,6 +225,22 @@ pub static DUP13: TransitionFunction<13, 14> = |_, input| Ok(dup_n::<13, 14>(inp
 pub static DUP14: TransitionFunction<14, 15> = |_, input| Ok(dup_n::<14, 15>(input));
 pub static DUP15: TransitionFunction<15, 16> = |_, input| Ok(dup_n::<15, 16>(input));
 pub static DUP16: TransitionFunction<16, 17> = |_, input| Ok(dup_n::<16, 17>(input));
+pub static SWAP1: TransitionFunction<2, 2> = |_, input| Ok(swap_n::<2>(input));
+pub static SWAP2: TransitionFunction<3, 3> = |_, input| Ok(swap_n::<3>(input));
+pub static SWAP3: TransitionFunction<4, 4> = |_, input| Ok(swap_n::<4>(input));
+pub static SWAP4: TransitionFunction<5, 5> = |_, input| Ok(swap_n::<5>(input));
+pub static SWAP5: TransitionFunction<6, 6> = |_, input| Ok(swap_n::<6>(input));
+pub static SWAP6: TransitionFunction<7, 7> = |_, input| Ok(swap_n::<7>(input));
+pub static SWAP7: TransitionFunction<8, 8> = |_, input| Ok(swap_n::<8>(input));
+pub static SWAP8: TransitionFunction<9, 9> = |_, input| Ok(swap_n::<9>(input));
+pub static SWAP9: TransitionFunction<10, 10> = |_, input| Ok(swap_n::<10>(input));
+pub static SWAP10: TransitionFunction<11, 11> = |_, input| Ok(swap_n::<11>(input));
+pub static SWAP11: TransitionFunction<12, 12> = |_, input| Ok(swap_n::<12>(input));
+pub static SWAP12: TransitionFunction<13, 13> = |_, input| Ok(swap_n::<13>(input));
+pub static SWAP13: TransitionFunction<14, 14> = |_, input| Ok(swap_n::<14>(input));
+pub static SWAP14: TransitionFunction<15, 15> = |_, input| Ok(swap_n::<15>(input));
+pub static SWAP15: TransitionFunction<16, 16> = |_, input| Ok(swap_n::<16>(input));
+pub static SWAP16: TransitionFunction<17, 17> = |_, input| Ok(swap_n::<17>(input));
 
 #[cfg(test)]
 mod tests {
@@ -783,6 +804,67 @@ mod tests {
         assert_eq!(
             DUP16(&mut context, [uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")]),
             Ok(TransitionFunctionOutput { cost: 3, result: [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+    }
+
+    #[test]
+    fn swap_n() {
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(SWAP1(&mut context, [uint!("1"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("1")], jump: 1 }));
+        assert_eq!(SWAP2(&mut context, [uint!("1"), uint!("0"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("1")], jump: 1 }));
+        assert_eq!(SWAP3(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }));
+        assert_eq!(
+            SWAP4(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP5(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP6(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP7(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP8(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP9(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP10(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP11(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP12(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP13(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP14(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP15(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
+        );
+        assert_eq!(
+            SWAP16(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
+            Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
         );
     }
 }

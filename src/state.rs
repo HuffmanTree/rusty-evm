@@ -5,7 +5,7 @@ use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::transient::Transient;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, XOR};
 
 struct State {
     remaining_gas: usize,
@@ -152,6 +152,22 @@ impl State {
     fn dup14(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(DUP14) }
     fn dup15(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(DUP15) }
     fn dup16(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(DUP16) }
+    fn swap1(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP1) }
+    fn swap2(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP2) }
+    fn swap3(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP3) }
+    fn swap4(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP4) }
+    fn swap5(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP5) }
+    fn swap6(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP6) }
+    fn swap7(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP7) }
+    fn swap8(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP8) }
+    fn swap9(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP9) }
+    fn swap10(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP10) }
+    fn swap11(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP11) }
+    fn swap12(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP12) }
+    fn swap13(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP13) }
+    fn swap14(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP14) }
+    fn swap15(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP15) }
+    fn swap16(&mut self) -> Result<TransitionOutput, String> { self.execute_transition(SWAP16) }
 }
 
 #[cfg(test)]
