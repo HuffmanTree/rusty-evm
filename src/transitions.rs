@@ -3,7 +3,7 @@ use ethnum::{u256, U256};
 use crate::storage::Storage;
 use crate::transient::Transient;
 use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
-use crate::memory::Memory;
+use crate::memory::{Memory, ReadWriteOperation};
 
 pub struct TransitionContext<'a> {
     pub code: &'a Vec<u8>,
@@ -124,16 +124,16 @@ pub static SAR: TransitionFunction<2, 1> = |_, [shift, value]| Ok(TransitionFunc
 // TODO (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
-    let (_, dynamic_cost, res) = context.memory.load_word(offset)?;
-    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [res], jump: 1 })
+    let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
+    Ok(TransitionFunctionOutput { cost: 3 + extension_cost, result: [result], jump: 1 })
 };
 pub static MSTORE: TransitionFunction<2, 0> = |context, [offset, value]| {
-    let (_, dynamic_cost) = context.memory.store_word(offset, value)?;
-    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
+    let ReadWriteOperation { extension_cost, .. } = context.memory.store_word(offset, value)?;
+    Ok(TransitionFunctionOutput { cost: 3 + extension_cost, result: [], jump: 1 })
 };
 pub static MSTORE8: TransitionFunction<2, 0> = |context, [offset, value]| {
-    let (_, dynamic_cost) = context.memory.store_byte(offset, value)?;
-    Ok(TransitionFunctionOutput { cost: 3 + dynamic_cost, result: [], jump: 1 })
+    let ReadWriteOperation { extension_cost, .. } = context.memory.store_byte(offset, value)?;
+    Ok(TransitionFunctionOutput { cost: 3 + extension_cost, result: [], jump: 1 })
 };
 pub static SLOAD: TransitionFunction<1, 1> = |context, [key]| {
     let res = context.storage.load(key);
