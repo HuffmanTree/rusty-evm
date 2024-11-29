@@ -2,7 +2,7 @@ use std::cmp::min;
 use ethnum::{u256, U256};
 use crate::storage::Storage;
 use crate::transient::Transient;
-use crate::utils::{NeededSizeInBytes,IsNeg,WrappingSignedDiv,WrappingSignedRem,WrappingBigPow};
+use crate::utils::{Hash, IsNeg, NeededSizeInBytes, WrappingBigPow, WrappingSignedDiv, WrappingSignedRem};
 use crate::memory::{Memory, ReadWriteOperation};
 
 pub struct TransitionContext<'a> {
@@ -121,7 +121,11 @@ pub static SAR: TransitionFunction<2, 1> = |_, [shift, value]| Ok(TransitionFunc
     (Err(_), false) => U256::ZERO,
     (Err(_), true) => U256::MAX,
 }], jump: 1 });
-// TODO (fguerin - 11/11/2024) Implement opcodes 0x20 - 0x4A
+pub static KECCAK256: TransitionFunction<2, 1> = |context, [offset, size]| {
+    let ReadWriteOperation { size, extension_cost, result, .. } = context.memory.load(offset, size)?;
+    Ok(TransitionFunctionOutput { cost: 30 + 6 * (size + 31) / 32 + extension_cost, result: [result.keccak256()], jump: 1 })
+};
+// TODO (fguerin - 30/11/2024) Implement opcodes 0x30 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
@@ -499,6 +503,20 @@ mod tests {
         assert_eq!(SAR(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"), uint!("0x0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0")], jump: 1 }));
         assert_eq!(SAR(&mut context, [uint!("0"), uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0")], jump: 1 }));
         assert_eq!(SAR(&mut context, [uint!("4"), uint!("0xEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFAB00")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFAB0")], jump: 1 }));
+    }
+
+    #[test]
+    fn keccak256_1() {
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0xFF, 0xFF, 0xFF, 0xFF]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(KECCAK256(&mut context, [uint!("0"), uint!("4")]), Ok(TransitionFunctionOutput { cost: 36, result: [uint!("0x29045A592007D0C246EF02C2223570DA9522D0CF0F73282C79A1BC8F0BB2C238")], jump: 1 }));
+    }
+
+    #[test]
+    fn keccak256_2() {
+        let mut context = TransitionContext { code: &Default::default(), gas: &50, memory: &mut Memory(vec![0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(KECCAK256(&mut context, [uint!("4"), uint!("40")]), Ok(TransitionFunctionOutput { cost: 46, result: [uint!("0xDAA77426C30C02A43D9FBA4E841A6556C524D47030762EB14DC4AF897E605D9B")], jump: 1 }));
     }
 
     #[test]

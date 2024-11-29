@@ -5,7 +5,7 @@ pub struct Memory(pub Vec<u8>);
 #[derive(Debug, PartialEq, Eq)]
 pub struct ReadWriteOperation<T> {
     offset: usize,
-    size: usize,
+    pub size: usize,
     extension_size: usize,
     pub extension_cost: usize,
     pub result: T,
@@ -78,14 +78,16 @@ impl Memory {
         Ok(ReadWriteOperation::<u256> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result })
     }
 
-    pub fn access(&self, offset: usize, size: usize) -> Vec<u8> {
-        let mut res = Vec::<u8>::new();
+    pub fn load(&mut self, offset: u256, size: u256) -> Result<ReadWriteOperation<Vec<u8>>, String> {
+        let (offset, size) = Memory::try_offset_size(offset, size)?;
+        let extension_size = self.extension_size(offset, size);
+        self.0.append(&mut vec![0; extension_size]);
 
+        let mut result = Vec::<u8>::new();
         for i in 0..size {
-            res.push(*self.0.get(offset + i).unwrap_or(&0_u8));
+            result.push(*self.0.get(offset + i).unwrap_or(&0_u8));
         }
-
-        res
+        Ok(ReadWriteOperation::<Vec<u8>> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result })
     }
 }
 
@@ -137,11 +139,23 @@ mod tests {
     }
 
     #[test]
-    fn access_an_arbitrary_number_of_bytes() {
-        let memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0]);
+    fn loads() {
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        assert_eq!(memory.access(2, 5), vec![0, 0, 4, 5, 6]);
-        assert_eq!(memory.access(2, 10), vec![0, 0, 4, 5, 6, 7, 0, 0, 0, 0]);
+        assert_eq!(memory.load(uint!("6"), uint!("4")), Ok(ReadWriteOperation::<Vec<u8>> {
+            offset: 6,
+            size: 4,
+            extension_size: 0,
+            extension_cost: 0,
+            result: vec![6, 7, 0, 0],
+        }));
+    }
+
+    #[test]
+    fn fails_to_load_out_of_memory() {
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        assert_eq!(memory.load(uint!("0x10000000000000000"), uint!("4")), Err("Memory out of bounds".to_string()));
     }
 
     #[test]
