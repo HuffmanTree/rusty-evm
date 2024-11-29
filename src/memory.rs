@@ -20,21 +20,21 @@ impl Memory {
         self.0.len()
     }
 
-    fn try_offset(offset: u256, size: u8) -> Result<usize, String> {
-        let offset: usize = match offset.try_into() {
-            Ok(offset) => offset,
+    fn try_offset_size(offset: u256, size: u256) -> Result<(usize, usize), String> {
+        let (offset, size): (usize, usize) = match (offset.try_into(), size.try_into()) {
+            (Ok(offset), Ok(size)) => (offset, size),
             _ => return Err("Memory out of bounds".to_string()),
         };
-        if size == 0 || offset <= usize::MAX - usize::from(size) + 1 {
-            Ok(offset)
+        if size == 0 || offset <= usize::MAX - size + 1 {
+            Ok((offset, size))
         } else {
             Err("Memory out of bounds".to_string())
         }
     }
 
     pub fn store_byte(&mut self, offset: u256, value: u256) -> Result<(usize, usize), String> {
-        let offset = Memory::try_offset(offset, 1)?;
-        let extension_size = self.extension_size(offset, 1);
+        let (offset, size) = Memory::try_offset_size(offset, U256::ONE)?;
+        let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
         self.0[offset] = (value & 0xFF).try_into().unwrap();
@@ -42,8 +42,8 @@ impl Memory {
     }
 
     pub fn store_word(&mut self, offset: u256, mut value: u256) -> Result<(usize, usize), String> {
-        let offset = Memory::try_offset(offset, 32)?;
-        let extension_size = self.extension_size(offset, 32);
+        let (offset, size) = Memory::try_offset_size(offset, u256::from(32_u8))?;
+        let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
         for i in 0..32 {
@@ -54,8 +54,8 @@ impl Memory {
     }
 
     pub fn load_word(&mut self, offset: u256) -> Result<(usize, usize, u256), String> {
-        let offset = Memory::try_offset(offset, 32)?;
-        let extension_size = self.extension_size(offset, 32);
+        let (offset, size) = Memory::try_offset_size(offset, u256::from(32_u8))?;
+        let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
         let mut res = U256::ZERO;
@@ -162,16 +162,20 @@ mod tests {
     }
 
     #[test]
-    fn computes_usize_offset_or_fail() {
+    fn computes_usize_offset_and_size_or_fail() {
         // offset is greater than usize::MAX
-        assert_eq!(Memory::try_offset(uint!("0x10000000000000000"), 0), Err("Memory out of bounds".to_string()));
+        assert_eq!(Memory::try_offset_size(uint!("0x10000000000000000"), uint!("0")), Err("Memory out of bounds".to_string()));
+
+        // size is greater than usize::MAX
+        assert_eq!(Memory::try_offset_size(uint!("0"), uint!("0x10000000000000000")), Err("Memory out of bounds".to_string()));
 
         // offset + size - 1 is greater than usize::MAX
-        assert_eq!(Memory::try_offset(uint!("0xFFFFFFFFFFFFFFFF"), 2), Err("Memory out of bounds".to_string()));
+        assert_eq!(Memory::try_offset_size(uint!("0xFFFFFFFFFFFFFFFF"), uint!("2")), Err("Memory out of bounds".to_string()));
+        assert_eq!(Memory::try_offset_size(uint!("2"), uint!("0xFFFFFFFFFFFFFFFF")), Err("Memory out of bounds".to_string()));
 
         // reading or writing 0 bytes makes no sense. addressing this case only to avoid panicing
-        assert_eq!(Memory::try_offset(uint!("4"), 0), Ok(4));
+        assert_eq!(Memory::try_offset_size(uint!("4"), uint!("0")), Ok((4, 0)));
 
-        assert_eq!(Memory::try_offset(uint!("4"), 32), Ok(4));
+        assert_eq!(Memory::try_offset_size(uint!("4"), uint!("32")), Ok((4, 32)));
     }
 }
