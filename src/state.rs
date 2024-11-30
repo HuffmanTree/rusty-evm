@@ -39,12 +39,12 @@ impl State {
 
     fn execute_transition<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, String> {
         let mut context = TransitionContext {
-            code: &self.transaction.data,
             gas: &self.remaining_gas,
             memory: &mut self.memory,
             pc: &mut self.pc,
             stop_flag: &mut self.stop_flag,
             storage: &mut self.storage,
+            transaction: &self.transaction,
             transient: &mut self.transient,
         };
         let mut input = [U256::ZERO; I];
