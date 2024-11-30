@@ -11,7 +11,7 @@ struct State {
     remaining_gas: usize,
     stack: Stack,
     memory: Memory,
-    storage: Storage,
+    storage: Storage<u256, u256>,
     stop_flag: bool,
     pc: usize,
     transaction: Transaction,

@@ -1,32 +1,31 @@
-use ethnum::{u256, U256};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StorageValue {
-    pub original_value: u256,
-    pub value: u256,
+pub struct StorageValue<V> {
+    pub original_value: V,
+    pub value: V,
     pub warm: bool,
 }
 
-pub struct Storage(pub HashMap<u256, StorageValue>);
+pub struct Storage<K, V>(pub HashMap<K, StorageValue<V>>);
 
-impl Storage {
-    pub fn new(init: HashMap::<u256, u256>) -> Self {
-        let mut store = HashMap::<u256, StorageValue>::new();
+impl<K, V> Storage<K, V> where K: Hash + Eq, V: Default + Clone + Copy {
+    pub fn new(init: HashMap::<K, V>) -> Self {
+        let mut store = HashMap::<K, StorageValue<V>>::new();
         for (key, value) in init {
             store.insert(key, StorageValue { original_value: value, value, warm: false });
         }
         Self(store)
     }
 
-    pub fn store(&mut self, key: u256, value: u256) -> Option<StorageValue> {
+    pub fn store(&mut self, key: K, value: V) -> Option<StorageValue<V>> {
         match self.0.get(&key) {
             Some(v) => self.0.insert(key, StorageValue { original_value: v.original_value, value, warm: true }),
-            None => self.0.insert(key, StorageValue { original_value: U256::ZERO, value, warm: true }),
+            None => self.0.insert(key, StorageValue { original_value: Default::default(), value, warm: true }),
         }
     }
 
-    pub fn load(&mut self, key: u256) -> StorageValue {
+    pub fn load(&mut self, key: K) -> StorageValue<V> {
         match self.0.get_mut(&key) {
             Some(v) => {
                 let res = v.clone();
@@ -34,8 +33,8 @@ impl Storage {
                 res
             },
             None => {
-                self.0.insert(key, StorageValue { original_value: U256::ZERO, value: U256::ZERO, warm: true });
-                StorageValue { original_value: U256::ZERO, value: U256::ZERO, warm: false }
+                self.0.insert(key, StorageValue { original_value: Default::default(), value: Default::default(), warm: true });
+                StorageValue { original_value: Default::default(), value: Default::default(), warm: false }
             },
         }
     }
@@ -43,7 +42,7 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use ethnum::uint;
+    use ethnum::{uint, u256};
 
     use super::*;
 

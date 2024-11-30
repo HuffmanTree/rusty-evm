@@ -12,7 +12,7 @@ pub struct TransitionContext<'a> {
     pub memory: &'a mut Memory,
     pub pc: &'a mut usize,
     pub stop_flag: &'a mut bool,
-    pub storage: &'a mut Storage,
+    pub storage: &'a mut Storage<u256, u256>,
     pub transaction: &'a Transaction,
     pub transient: &'a mut Transient,
 }
