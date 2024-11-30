@@ -173,14 +173,14 @@ impl State {
 
 #[cfg(test)]
 mod tests {
-    use crate::transitions::TransitionFunctionOutput;
+    use crate::{transaction::Address, transitions::TransitionFunctionOutput};
 
     use super::*;
     use ethnum::{u256, uint};
 
     #[test]
     fn handles_gas() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 7 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7 } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_too_much_outputs() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, String>::Err("Error message".to_string())
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn preserve_stack_order() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         state.stack.push(uint!("0x0C")).unwrap();
         state.stack.push(uint!("0x0B")).unwrap();
