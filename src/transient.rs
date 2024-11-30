@@ -1,6 +1,7 @@
 use ethnum::{u256, U256};
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct Transient(pub HashMap<u256, u256>);
 
 impl Transient {

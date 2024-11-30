@@ -1,6 +1,6 @@
 use ethnum::{u256, U256};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Address(pub u256);
 
 impl std::fmt::Debug for Address {
@@ -17,6 +17,7 @@ impl TryInto::<Address> for u256 {
     }
 }
 
+#[derive(Default)]
 pub struct Transaction {
     pub data: Vec<u8>,
     pub from: Address,

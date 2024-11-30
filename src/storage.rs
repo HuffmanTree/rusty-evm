@@ -7,6 +7,7 @@ pub struct StorageValue<V> {
     pub warm: bool,
 }
 
+#[derive(Default)]
 pub struct Storage<K, V>(pub HashMap<K, StorageValue<V>>);
 
 impl<K, V> Storage<K, V> where K: Hash + Eq, V: Default + Clone + Copy {
