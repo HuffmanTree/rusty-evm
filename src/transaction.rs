@@ -1,5 +1,6 @@
 use ethnum::u256;
 
+#[derive(Clone, Copy)]
 pub struct Address(pub u256);
 
 pub struct Transaction {

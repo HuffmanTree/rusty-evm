@@ -5,6 +5,7 @@ use crate::transaction::Transaction;
 use crate::transient::Transient;
 use crate::utils::{Hash, IsNeg, NeededSizeInBytes, WrappingBigPow, WrappingSignedDiv, WrappingSignedRem};
 use crate::memory::{Memory, ReadWriteOperation};
+use rlp::RlpStream;
 
 pub struct TransitionContext<'a> {
     pub gas: &'a usize,
@@ -126,7 +127,25 @@ pub static KECCAK256: TransitionFunction<2, 1> = |context, [offset, size]| {
     let ReadWriteOperation { size, extension_cost, result, .. } = context.memory.load(offset, size)?;
     Ok(TransitionFunctionOutput { cost: 30 + 6 * (size + 31) / 32 + extension_cost, result: [result.keccak256()], jump: 1 })
 };
-// TODO (fguerin - 30/11/2024) Implement opcodes 0x30 - 0x4A
+pub static ADDRESS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [if context.transaction.to.0 == U256::ZERO { // keccak256(rlp([sender, nonce]))
+    let Transaction { mut from, mut nonce, .. } = *context.transaction;
+    let mut from_vec: Vec<u8> = vec![];
+    for _ in 0..20 {
+        from_vec.push((from.0 & 0xFF).try_into().unwrap());
+        from.0 >>= 8;
+    }
+    from_vec.reverse();
+    let mut nonce_vec: Vec<u8> = vec![];
+    while nonce != 0 {
+        nonce_vec.push((nonce & 0xFF).try_into().unwrap());
+        nonce >>= 8;
+    }
+    nonce_vec.reverse();
+    let mut stream = RlpStream::new_list(2);
+    stream.append(&from_vec).append(&nonce_vec);
+    stream.out().to_vec().keccak256() & u256::from_str_hex("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()
+} else { context.transaction.to.0 }], jump: 1 });
+// TODO (fguerin - 30/11/2024) Implement opcodes 0x31 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
@@ -518,6 +537,48 @@ mod tests {
         let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory(vec![0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(KECCAK256(&mut context, [uint!("4"), uint!("40")]), Ok(TransitionFunctionOutput { cost: 46, result: [uint!("0xDAA77426C30C02A43D9FBA4E841A6556C524D47030762EB14DC4AF897E605D9B")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_1() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0x327E1362BF1CA14B1685B19BE97994D6EEBF546B")), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0x327E1362BF1CA14B1685B19BE97994D6EEBF546B")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_2() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(uint!("0x004EC07D2329997267EC62B4166639513386F32E")), nonce: 0x8E, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0x8D7BB25141FF9C4C77E9E208B6BF4D1D3CA684B0")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_3() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(uint!("0x6AC7EA33F8831EA9DCC53393AAA88B25A785DBF0")), nonce: 0, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0xCD234A471B72BA2F1CCF0A70FCABA648A5EECD8D")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_4() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(uint!("0x6AC7EA33F8831EA9DCC53393AAA88B25A785DBF0")), nonce: 1, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0x343C43A37D37DFF08AE8C4A11544C718ABB4FCF8")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_5() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(uint!("0x6AC7EA33F8831EA9DCC53393AAA88B25A785DBF0")), nonce: 2, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")], jump: 1 }));
+    }
+
+    #[test]
+    fn address_6() {
+        let mut context = TransitionContext { transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(ADDRESS(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")], jump: 1 }));
     }
 
     #[test]
