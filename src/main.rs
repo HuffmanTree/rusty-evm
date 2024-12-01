@@ -1,3 +1,4 @@
+mod errors;
 mod memory;
 mod stack;
 mod state;

@@ -1,5 +1,6 @@
 use std::cmp::min;
 use ethnum::{u256, U256};
+use crate::errors::Error;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::transient::Transient;
@@ -26,7 +27,7 @@ pub struct TransitionFunctionOutput<const O: usize> {
     pub jump: usize,
 }
 
-pub type TransitionFunction<const I: usize, const O: usize> = fn(&mut TransitionContext, TransitionFunctionInput<I>) -> Result<TransitionFunctionOutput<O>, String>;
+pub type TransitionFunction<const I: usize, const O: usize> = fn(&mut TransitionContext, TransitionFunctionInput<I>) -> Result<TransitionFunctionOutput<O>, Error>;
 
 #[derive(Debug,PartialEq,Eq)]
 pub struct TransitionOutput {
@@ -34,15 +35,14 @@ pub struct TransitionOutput {
     pub jump: usize,
 }
 
-fn try_jump(code: &Vec<u8>, counter: u256) -> Result<usize, String> {
-    let invalid_jumpdest: Result<usize, String> = Err("Invalid jump destination".to_string());
+fn try_jump(code: &Vec<u8>, counter: u256) -> Result<usize, Error> {
     let counter: usize = match counter.try_into() {
         Ok(x) => x,
-        _ => return invalid_jumpdest,
+        _ => return Err(Error::InvalidJumpDest),
     };
     match code.get(counter) {
-        Some(x) => if *x == 0x5B { Ok(counter) } else { invalid_jumpdest },
-        _ => invalid_jumpdest,
+        Some(x) => if *x == 0x5B { Ok(counter) } else { Err(Error::InvalidJumpDest) },
+        _ => Err(Error::InvalidJumpDest),
     }
 }
 
@@ -700,11 +700,11 @@ mod tests {
         let mut context = TransitionContext { transaction: &Transaction { data: vec![0_u8, 0_u8, 0x5B, 0_u8], from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0 }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMP(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFF")]), Err("Invalid jump destination".to_string())); // not a usize
+        assert_eq!(JUMP(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFF")]), Err(Error::InvalidJumpDest)); // not a usize
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMP(&mut context, [uint!("0xFFFF")]), Err("Invalid jump destination".to_string())); // not in range
+        assert_eq!(JUMP(&mut context, [uint!("0xFFFF")]), Err(Error::InvalidJumpDest)); // not in range
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMP(&mut context, [uint!("1")]), Err("Invalid jump destination".to_string())); // not a valid destination
+        assert_eq!(JUMP(&mut context, [uint!("1")]), Err(Error::InvalidJumpDest)); // not a valid destination
         assert_eq!(*context.pc, 0);
         assert_eq!(JUMP(&mut context, [uint!("2")]), Ok(TransitionFunctionOutput { cost: 8, result: [], jump: 0 }));
         assert_eq!(*context.pc, 2);
@@ -717,11 +717,11 @@ mod tests {
         assert_eq!(*context.pc, 0);
         assert_eq!(JUMPI(&mut context, [uint!("2"), uint!("0")]), Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 1 })); // jump condition is false
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMPI(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFF"), uint!("1")]), Err("Invalid jump destination".to_string())); // not a usize
+        assert_eq!(JUMPI(&mut context, [uint!("0xFFFFFFFFFFFFFFFFFFFF"), uint!("1")]), Err(Error::InvalidJumpDest)); // not a usize
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMPI(&mut context, [uint!("0xFFFF"), uint!("1")]), Err("Invalid jump destination".to_string())); // not in range
+        assert_eq!(JUMPI(&mut context, [uint!("0xFFFF"), uint!("1")]), Err(Error::InvalidJumpDest)); // not in range
         assert_eq!(*context.pc, 0);
-        assert_eq!(JUMPI(&mut context, [uint!("1"), uint!("1")]), Err("Invalid jump destination".to_string())); // not a valid destination
+        assert_eq!(JUMPI(&mut context, [uint!("1"), uint!("1")]), Err(Error::InvalidJumpDest)); // not a valid destination
         assert_eq!(*context.pc, 0);
         assert_eq!(JUMPI(&mut context, [uint!("2"), uint!("1")]), Ok(TransitionFunctionOutput { cost: 10, result: [], jump: 0 }));
         assert_eq!(*context.pc, 2);

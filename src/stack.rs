@@ -1,5 +1,7 @@
 use ethnum::u256;
 
+use crate::errors::Error;
+
 pub struct Stack {
     size: u16,
     top: i32,
@@ -18,9 +20,9 @@ impl Stack {
         }
     }
 
-    pub fn push(&mut self, value: u256) -> Result<(), &str> {
+    pub fn push(&mut self, value: u256) -> Result<(), Error> {
         match self.top + 1 == self.size.into() {
-            true => Err("Stack overflow"),
+            true => Err(Error::StackOverflow),
             false => { self.top += 1; self.arr.push(value); Ok(()) },
         }
     }
@@ -55,7 +57,7 @@ mod tests {
         for _ in 0..1024 {
             assert_eq!(stack.push(uint!("7")), Ok(()));
         }
-        assert_eq!(stack.push(uint!("7")), Err("Stack overflow"));
+        assert_eq!(stack.push(uint!("7")), Err(Error::StackOverflow));
     }
 
     #[test]
