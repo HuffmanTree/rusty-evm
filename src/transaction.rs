@@ -24,6 +24,7 @@ pub struct Transaction {
     pub gas: usize,
     pub nonce: usize,
     pub to: Address,
+    pub value: u256,
 }
 
 #[cfg(test)]
