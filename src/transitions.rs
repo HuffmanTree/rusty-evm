@@ -1,5 +1,5 @@
 use std::cmp::min;
-use ethnum::{u256, U256};
+use ethnum::{u256, AsU256, U256};
 use crate::errors::Error;
 use crate::storage::Storage;
 use crate::transaction::{Address, Transaction};
@@ -154,7 +154,21 @@ pub static BALANCE: TransitionFunction<1, 1> = |context, [address]| {
 pub static ORIGIN: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.from.0], jump: 1 });
 pub static CALLER: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.caller.0], jump: 1 });
 pub static CALLVALUE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.value], jump: 1 });
-// TODO (fguerin - 1/12/2024) Implement opcodes 0x35 - 0x4A
+pub static CALLDATALOAD: TransitionFunction<1, 1> = |context, [offset]| Ok(TransitionFunctionOutput { cost: 3, result: [
+    match TryInto::<usize>::try_into(offset) {
+        Ok(offset) => {
+            let mut res = U256::ZERO;
+            for i in 0..32_usize {
+                res <<= 8;
+                res |= u256::from(*context.transaction.data.get(offset + i).unwrap_or(&0_u8));
+            }
+            res
+        },
+        Err(_) => U256::ZERO,
+    }
+], jump: 1 });
+pub static CALLDATASIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.data.len().as_u256()], jump: 1 });
+// TODO (fguerin - 1/12/2024) Implement opcodes 0x37 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
@@ -622,6 +636,21 @@ mod tests {
         let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(CALLVALUE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("42")], jump: 1 }));
+    }
+
+    #[test]
+    fn calldataload() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(CALLDATALOAD(&mut context, [uint!("0")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")], jump: 1 }));
+        assert_eq!(CALLDATALOAD(&mut context, [uint!("31")]), Ok(TransitionFunctionOutput { cost: 3, result: [uint!("0xFF00000000000000000000000000000000000000000000000000000000000000")], jump: 1 }));
+    }
+
+    #[test]
+    fn calldatasize() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: vec![0xFF, 0xFF], from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(CALLDATASIZE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("2")], jump: 1 }));
     }
 
     #[test]

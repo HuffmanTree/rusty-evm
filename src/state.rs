@@ -6,7 +6,7 @@ use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::{Address, Transaction};
 use crate::transient::Transient;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BYTE, CALLER, CALLVALUE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, ORIGIN, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BYTE, CALLDATALOAD, CALLDATASIZE, CALLER, CALLVALUE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, ORIGIN, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, XOR};
 
 struct State {
     accounts: Storage<Address, u256>,
@@ -103,6 +103,8 @@ impl State {
     fn origin(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ORIGIN) }
     fn caller(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLER) }
     fn callvalue(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLVALUE) }
+    fn calldataload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLDATALOAD) }
+    fn calldatasize(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLDATASIZE) }
     fn pop(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(POP) }
     fn mload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MLOAD) }
     fn mstore(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MSTORE) }
