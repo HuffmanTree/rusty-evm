@@ -4,11 +4,12 @@ use crate::errors::Error;
 use crate::memory::Memory;
 use crate::stack::Stack;
 use crate::storage::Storage;
-use crate::transaction::Transaction;
+use crate::transaction::{Address, Transaction};
 use crate::transient::Transient;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, AND, BYTE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BYTE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LT, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, XOR};
 
 struct State {
+    accounts: Storage<Address, u256>,
     remaining_gas: usize,
     stack: Stack,
     memory: Memory,
@@ -20,6 +21,7 @@ struct State {
 }
 
 struct StateParameters {
+    initial_accounts: HashMap::<Address, u256>,
     initial_storage: HashMap::<u256, u256>,
     transaction: Transaction,
 }
@@ -27,6 +29,7 @@ struct StateParameters {
 impl State {
     fn new(parameters: StateParameters) -> Self {
         Self {
+            accounts: Storage::new(parameters.initial_accounts),
             remaining_gas: parameters.transaction.gas,
             stack: Stack::new(),
             memory: Memory::new(),
@@ -40,6 +43,7 @@ impl State {
 
     fn execute_transition<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, Error> {
         let mut context = TransitionContext {
+            accounts: &mut self.accounts,
             gas: &self.remaining_gas,
             memory: &mut self.memory,
             pc: &mut self.pc,
@@ -91,6 +95,8 @@ impl State {
     fn shr(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SHR) }
     fn sar(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SAR) }
     fn keccak256(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(KECCAK256) }
+    fn address(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ADDRESS) }
+    fn balance(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(BALANCE) }
     fn pop(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(POP) }
     fn mload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MLOAD) }
     fn mstore(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MSTORE) }
@@ -179,7 +185,7 @@ mod tests {
 
     #[test]
     fn handles_gas() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7 } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -204,7 +210,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -213,7 +219,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_too_much_outputs() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -222,7 +228,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, Error>::Err(Error::InvalidJumpDest)
@@ -231,7 +237,7 @@ mod tests {
 
     #[test]
     fn preserve_stack_order() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20 } });
 
         state.stack.push(uint!("0x0C")).unwrap();
         state.stack.push(uint!("0x0B")).unwrap();

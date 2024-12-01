@@ -1,6 +1,6 @@
 use ethnum::{u256, U256};
 
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Address(pub u256);
 
 impl std::fmt::Debug for Address {
