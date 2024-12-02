@@ -65,6 +65,17 @@ impl Memory {
         Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result: () })
     }
 
+    pub fn store(&mut self, offset: u256, size: u256, value: Vec<u8>) -> Result<ReadWriteOperation<()>, Error> {
+        let (offset, size) = Memory::try_offset_size(offset, size)?;
+        let extension_size = self.extension_size(offset, size);
+        self.0.append(&mut vec![0; extension_size]);
+
+        for i in 0..size {
+            self.0[offset + i] = *value.get(i).unwrap_or(&0_u8);
+        }
+        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result: () })
+    }
+
     pub fn load_word(&mut self, offset: u256) -> Result<ReadWriteOperation<u256>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, u256::from(32_u8))?;
         let extension_size = self.extension_size(offset, size);
@@ -119,6 +130,28 @@ mod tests {
         let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         assert_eq!(memory.store_word(uint!("0x10000000000000000"), uint!("0xFF")), Err(Error::MemoryOutOfBounds));
+    }
+
+    #[test]
+    fn stores() {
+        let mut memory = Memory::new();
+
+        assert_eq!(memory.0.len(), 0);
+        assert_eq!(memory.store(uint!("4"), uint!("40"), vec![4, 5, 6, 7]), Ok(ReadWriteOperation::<()> {
+            offset: 4,
+            size: 40,
+            extension_size: 64,
+            extension_cost: 6,
+            result: (),
+        }));
+        assert_eq!(memory.0, vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn fails_to_store_out_of_memory() {
+        let mut memory = Memory(vec![0, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        assert_eq!(memory.store(uint!("0x10000000000000000"), uint!("0xFF"), vec![]), Err(Error::MemoryOutOfBounds));
     }
 
     #[test]
