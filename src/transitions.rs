@@ -158,8 +158,14 @@ pub static CALLDATACOPY: TransitionFunction<3, 0> = |context, [dest_offset, offs
     let ReadWriteOperation { size, extension_cost, .. } = context.memory.store(dest_offset, size, value.to_vec())?;
     Ok(TransitionFunctionOutput { cost: 3 + 3 * (size + 31) / 32 + extension_cost, result: [], jump: 1 })
 };
-pub static CODESIZE: TransitionFunction<0, 1> = |_, []| todo!();
-pub static CODECOPY: TransitionFunction<3, 0> = |_, [_dest_offset, _offset, _size]| todo!();
+pub static CODESIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.accounts.load(context.transaction.contract_address()).value.code.len().as_u256()], jump: 1 });
+pub static CODECOPY: TransitionFunction<3, 0> = |context, [dest_offset, offset, size]| {
+    let (code_offset, code_size): (usize, usize) = (offset.try_into().unwrap(), size.try_into().unwrap()); // TODO (fguerin - 7/12/2024) Handle code out of bounds
+    let contract_account = context.accounts.load(context.transaction.contract_address());
+    let value = &contract_account.value.code[code_offset..min(contract_account.value.code.len(), code_offset + code_size)];
+    let ReadWriteOperation { size, extension_cost, .. } = context.memory.store(dest_offset, size, value.to_vec())?;
+    Ok(TransitionFunctionOutput { cost: 3 + 3 * (size + 31) / 32 + extension_cost, result: [], jump: 1 })
+};
 pub static GASPRICE: TransitionFunction<0, 1> = |_, []| todo!();
 pub static EXTCODESIZE: TransitionFunction<1, 1> = |_, [_address]| todo!();
 pub static EXTCODECOPY: TransitionFunction<4, 0> = |_, [_address, _dest_offset, _offset, _size]| todo!();
@@ -705,6 +711,35 @@ mod tests {
 
         assert_eq!(CALLDATACOPY(&mut context, [uint!("0"), uint!("31"), uint!("8")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
         assert_eq!(context.memory.0, vec![0xFF, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn codesize() {
+        let mut initial_accounts = HashMap::<Address, Account>::new();
+        initial_accounts.insert(Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), Account { balance: uint!("4"), code: vec![1, 5, 4, 11, 42] });
+        let mut context = TransitionContext { accounts: &mut Storage::new(initial_accounts), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, revert_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
+
+        assert_eq!(CODESIZE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("5")], jump: 1 }));
+    }
+
+    #[test]
+    fn codesize_no_code() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, revert_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
+
+        assert_eq!(CODESIZE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("0")], jump: 1 }));
+    }
+
+    #[test]
+    fn codecopy() {
+        let mut initial_accounts = HashMap::<Address, Account>::new();
+        initial_accounts.insert(Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), Account { balance: uint!("4"), code: vec![0x7D, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F] });
+        let mut context = TransitionContext { accounts: &mut Storage::new(initial_accounts), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, revert_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
+
+        assert_eq!(CODECOPY(&mut context, [uint!("0"), uint!("0"), uint!("32")]), Ok(TransitionFunctionOutput { cost: 11, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0x7D, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+
+        assert_eq!(CODECOPY(&mut context, [uint!("0"), uint!("31"), uint!("8")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
     }
 
     #[test]
