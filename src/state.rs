@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use ethnum::{u256, U256};
 use crate::errors::Error;
 use crate::memory::Memory;
@@ -8,36 +7,36 @@ use crate::transaction::{Address, Transaction};
 use crate::transient::Transient;
 use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BASEFEE, BLOBBASEFEE, BLOBHASH, BLOCKHASH, BYTE, CALL, CALLCODE, CALLDATACOPY, CALLDATALOAD, CALLDATASIZE, CALLER, CALLVALUE, CHAINID, CODECOPY, CODESIZE, COINBASE, CREATE, CREATE2, DELEGATECALL, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, EXTCODECOPY, EXTCODEHASH, EXTCODESIZE, GAS, GASLIMIT, GASPRICE, GT, INVALID, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LOG0, LOG1, LOG2, LOG3, LOG4, LT, MCOPY, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, NUMBER, OR, ORIGIN, PC, POP, PREVRANDAO, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, RETURN, RETURNDATACOPY, RETURNDATASIZE, REVERT, SAR, SDIV, SELFBALANCE, SELFDESTRUCT, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STATICCALL, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, TIMESTAMP, TLOAD, TSTORE, XOR};
 
-struct State {
+pub struct State {
     accounts: Storage<Address, u256>,
     latest_caller: Address,
     remaining_gas: usize,
     stack: Stack,
     memory: Memory,
     storage: Storage<u256, u256>,
-    stop_flag: bool,
-    pc: usize,
+    pub stop_flag: bool,
+    pub pc: usize,
     returndata: Vec<u8>,
     revert_flag: bool,
     transaction: Transaction,
     transient: Transient,
 }
 
-struct StateParameters {
-    initial_accounts: HashMap::<Address, u256>,
-    initial_storage: HashMap::<u256, u256>,
-    transaction: Transaction,
+pub struct StateParameters {
+    pub accounts: Storage<Address, u256>,
+    pub storage: Storage<u256, u256>,
+    pub transaction: Transaction,
 }
 
 impl State {
-    fn new(parameters: StateParameters) -> Self {
+    pub fn new(parameters: StateParameters) -> Self {
         Self {
-            accounts: Storage::new(parameters.initial_accounts),
+            accounts: parameters.accounts,
             latest_caller: parameters.transaction.from,
             remaining_gas: parameters.transaction.gas,
             stack: Stack::new(),
             memory: Memory::new(),
-            storage: Storage::new(parameters.initial_storage),
+            storage: parameters.storage,
             stop_flag: false,
             pc: 0,
             returndata: Default::default(),
@@ -244,7 +243,7 @@ mod tests {
 
     #[test]
     fn handles_gas() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -269,7 +268,7 @@ mod tests {
 
     #[test]
     fn moves_code_pointer() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
 
         assert_eq!(state.pc, 0);
 
@@ -286,7 +285,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -295,7 +294,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_too_much_outputs() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -304,7 +303,7 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, Error>::Err(Error::InvalidJumpDest)
@@ -313,7 +312,7 @@ mod tests {
 
     #[test]
     fn preserve_stack_order() {
-        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         state.stack.push(uint!("0x0C")).unwrap();
         state.stack.push(uint!("0x0B")).unwrap();
