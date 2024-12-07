@@ -6,7 +6,7 @@ use crate::stack::Stack;
 use crate::storage::Storage;
 use crate::transaction::{Address, Transaction};
 use crate::transient::Transient;
-use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BYTE, CALLDATACOPY, CALLDATALOAD, CALLDATASIZE, CALLER, CALLVALUE, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, GAS, GT, INVALID, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LT, MCOPY, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, OR, ORIGIN, PC, POP, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, RETURN, REVERT, SAR, SDIV, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, TLOAD, TSTORE, XOR};
+use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BASEFEE, BLOBBASEFEE, BLOBHASH, BLOCKHASH, BYTE, CALL, CALLCODE, CALLDATACOPY, CALLDATALOAD, CALLDATASIZE, CALLER, CALLVALUE, CHAINID, CODECOPY, CODESIZE, COINBASE, CREATE, CREATE2, DELEGATECALL, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, EXTCODECOPY, EXTCODEHASH, EXTCODESIZE, GAS, GASLIMIT, GASPRICE, GT, INVALID, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LOG0, LOG1, LOG2, LOG3, LOG4, LT, MCOPY, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, NUMBER, OR, ORIGIN, PC, POP, PREVRANDAO, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, RETURN, RETURNDATACOPY, RETURNDATASIZE, REVERT, SAR, SDIV, SELFBALANCE, SELFDESTRUCT, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STATICCALL, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, TIMESTAMP, TLOAD, TSTORE, XOR};
 
 struct State {
     accounts: Storage<Address, u256>,
@@ -78,124 +78,161 @@ impl State {
         Ok(TransitionOutput { cost: output.cost, jump: output.jump })
     }
 
-    fn stop(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(STOP) }
-    fn add(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ADD) }
-    fn mul(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MUL) }
-    fn sub(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SUB) }
-    fn div(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DIV) }
-    fn sdiv(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SDIV) }
-    fn r#mod(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MOD) }
-    fn smod(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SMOD) }
-    fn addmod(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ADDMOD) }
-    fn mulmod(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MULMOD) }
-    fn exp(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(EXP) }
-    fn signextend(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SIGNEXTEND) }
-    fn lt(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(LT) }
-    fn gt(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(GT) }
-    fn slt(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SLT) }
-    fn sgt(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SGT) }
-    fn eq(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(EQ) }
-    fn iszero(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ISZERO) }
-    fn and(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(AND) }
-    fn or(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(OR) }
-    fn xor(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(XOR) }
-    fn not(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(NOT) }
-    fn byte(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(BYTE) }
-    fn shl(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SHL) }
-    fn shr(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SHR) }
-    fn sar(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SAR) }
-    fn keccak256(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(KECCAK256) }
-    fn address(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ADDRESS) }
-    fn balance(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(BALANCE) }
-    fn origin(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(ORIGIN) }
-    fn caller(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLER) }
-    fn callvalue(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLVALUE) }
-    fn calldataload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLDATALOAD) }
-    fn calldatasize(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLDATASIZE) }
-    fn calldatacopy(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(CALLDATACOPY) }
-    fn pop(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(POP) }
-    fn mload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MLOAD) }
-    fn mstore(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MSTORE) }
-    fn mstore8(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MSTORE8) }
-    fn sload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SLOAD) }
-    fn sstore(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SSTORE) }
-    fn jump(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(JUMP) }
-    fn jumpi(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(JUMPI) }
-    fn pc(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PC) }
-    fn msize(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MSIZE) }
-    fn gas(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(GAS) }
-    fn jumpdest(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(JUMPDEST) }
-    fn tload(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(TLOAD) }
-    fn tstore(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(TSTORE) }
-    fn mcopy(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(MCOPY) }
-    fn push0(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH0) }
-    fn push1(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH1) }
-    fn push2(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH2) }
-    fn push3(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH3) }
-    fn push4(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH4) }
-    fn push5(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH5) }
-    fn push6(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH6) }
-    fn push7(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH7) }
-    fn push8(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH8) }
-    fn push9(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH9) }
-    fn push10(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH10) }
-    fn push11(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH11) }
-    fn push12(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH12) }
-    fn push13(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH13) }
-    fn push14(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH14) }
-    fn push15(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH15) }
-    fn push16(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH16) }
-    fn push17(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH17) }
-    fn push18(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH18) }
-    fn push19(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH19) }
-    fn push20(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH20) }
-    fn push21(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH21) }
-    fn push22(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH22) }
-    fn push23(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH23) }
-    fn push24(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH24) }
-    fn push25(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH25) }
-    fn push26(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH26) }
-    fn push27(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH27) }
-    fn push28(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH28) }
-    fn push29(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH29) }
-    fn push30(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH30) }
-    fn push31(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH31) }
-    fn push32(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(PUSH32) }
-    fn dup1(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP1) }
-    fn dup2(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP2) }
-    fn dup3(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP3) }
-    fn dup4(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP4) }
-    fn dup5(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP5) }
-    fn dup6(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP6) }
-    fn dup7(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP7) }
-    fn dup8(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP8) }
-    fn dup9(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP9) }
-    fn dup10(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP10) }
-    fn dup11(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP11) }
-    fn dup12(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP12) }
-    fn dup13(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP13) }
-    fn dup14(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP14) }
-    fn dup15(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP15) }
-    fn dup16(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(DUP16) }
-    fn swap1(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP1) }
-    fn swap2(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP2) }
-    fn swap3(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP3) }
-    fn swap4(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP4) }
-    fn swap5(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP5) }
-    fn swap6(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP6) }
-    fn swap7(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP7) }
-    fn swap8(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP8) }
-    fn swap9(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP9) }
-    fn swap10(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP10) }
-    fn swap11(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP11) }
-    fn swap12(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP12) }
-    fn swap13(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP13) }
-    fn swap14(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP14) }
-    fn swap15(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP15) }
-    fn swap16(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(SWAP16) }
-    fn r#return(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(RETURN) }
-    fn revert(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(REVERT) }
-    fn invalid(&mut self) -> Result<TransitionOutput, Error> { self.execute_transition(INVALID) }
+    pub fn execute_next_opcode(&mut self) -> Result<TransitionOutput, Error> {
+        match self.transaction.data.get(self.pc).unwrap_or(&0) {
+            0x00 => self.execute_transition(STOP),
+            0x01 => self.execute_transition(ADD),
+            0x02 => self.execute_transition(MUL),
+            0x03 => self.execute_transition(SUB),
+            0x04 => self.execute_transition(DIV),
+            0x05 => self.execute_transition(SDIV),
+            0x06 => self.execute_transition(MOD),
+            0x07 => self.execute_transition(SMOD),
+            0x08 => self.execute_transition(ADDMOD),
+            0x09 => self.execute_transition(MULMOD),
+            0x0A => self.execute_transition(EXP),
+            0x0B => self.execute_transition(SIGNEXTEND),
+            0x10 => self.execute_transition(LT),
+            0x11 => self.execute_transition(GT),
+            0x12 => self.execute_transition(SLT),
+            0x13 => self.execute_transition(SGT),
+            0x14 => self.execute_transition(EQ),
+            0x15 => self.execute_transition(ISZERO),
+            0x16 => self.execute_transition(AND),
+            0x17 => self.execute_transition(OR),
+            0x18 => self.execute_transition(XOR),
+            0x19 => self.execute_transition(NOT),
+            0x1A => self.execute_transition(BYTE),
+            0x1B => self.execute_transition(SHL),
+            0x1C => self.execute_transition(SHR),
+            0x1D => self.execute_transition(SAR),
+            0x20 => self.execute_transition(KECCAK256),
+            0x30 => self.execute_transition(ADDRESS),
+            0x31 => self.execute_transition(BALANCE),
+            0x32 => self.execute_transition(ORIGIN),
+            0x33 => self.execute_transition(CALLER),
+            0x34 => self.execute_transition(CALLVALUE),
+            0x35 => self.execute_transition(CALLDATALOAD),
+            0x36 => self.execute_transition(CALLDATASIZE),
+            0x37 => self.execute_transition(CALLDATACOPY),
+            0x38 => self.execute_transition(CODESIZE),
+            0x39 => self.execute_transition(CODECOPY),
+            0x3A => self.execute_transition(GASPRICE),
+            0x3B => self.execute_transition(EXTCODESIZE),
+            0x3C => self.execute_transition(EXTCODECOPY),
+            0x3D => self.execute_transition(RETURNDATASIZE),
+            0x3E => self.execute_transition(RETURNDATACOPY),
+            0x3F => self.execute_transition(EXTCODEHASH),
+            0x40 => self.execute_transition(BLOCKHASH),
+            0x41 => self.execute_transition(COINBASE),
+            0x42 => self.execute_transition(TIMESTAMP),
+            0x43 => self.execute_transition(NUMBER),
+            0x44 => self.execute_transition(PREVRANDAO),
+            0x45 => self.execute_transition(GASLIMIT),
+            0x46 => self.execute_transition(CHAINID),
+            0x47 => self.execute_transition(SELFBALANCE),
+            0x48 => self.execute_transition(BASEFEE),
+            0x49 => self.execute_transition(BLOBHASH),
+            0x4A => self.execute_transition(BLOBBASEFEE),
+            0x50 => self.execute_transition(POP),
+            0x51 => self.execute_transition(MLOAD),
+            0x52 => self.execute_transition(MSTORE),
+            0x53 => self.execute_transition(MSTORE8),
+            0x54 => self.execute_transition(SLOAD),
+            0x55 => self.execute_transition(SSTORE),
+            0x56 => self.execute_transition(JUMP),
+            0x57 => self.execute_transition(JUMPI),
+            0x58 => self.execute_transition(PC),
+            0x59 => self.execute_transition(MSIZE),
+            0x5A => self.execute_transition(GAS),
+            0x5B => self.execute_transition(JUMPDEST),
+            0x5C => self.execute_transition(TLOAD),
+            0x5D => self.execute_transition(TSTORE),
+            0x5E => self.execute_transition(MCOPY),
+            0x5F => self.execute_transition(PUSH0),
+            0x60 => self.execute_transition(PUSH1),
+            0x61 => self.execute_transition(PUSH2),
+            0x62 => self.execute_transition(PUSH3),
+            0x63 => self.execute_transition(PUSH4),
+            0x64 => self.execute_transition(PUSH5),
+            0x65 => self.execute_transition(PUSH6),
+            0x66 => self.execute_transition(PUSH7),
+            0x67 => self.execute_transition(PUSH8),
+            0x68 => self.execute_transition(PUSH9),
+            0x69 => self.execute_transition(PUSH10),
+            0x6A => self.execute_transition(PUSH11),
+            0x6B => self.execute_transition(PUSH12),
+            0x6C => self.execute_transition(PUSH13),
+            0x6D => self.execute_transition(PUSH14),
+            0x6E => self.execute_transition(PUSH15),
+            0x6F => self.execute_transition(PUSH16),
+            0x70 => self.execute_transition(PUSH17),
+            0x71 => self.execute_transition(PUSH18),
+            0x72 => self.execute_transition(PUSH19),
+            0x73 => self.execute_transition(PUSH20),
+            0x74 => self.execute_transition(PUSH21),
+            0x75 => self.execute_transition(PUSH22),
+            0x76 => self.execute_transition(PUSH23),
+            0x77 => self.execute_transition(PUSH24),
+            0x78 => self.execute_transition(PUSH25),
+            0x79 => self.execute_transition(PUSH26),
+            0x7A => self.execute_transition(PUSH27),
+            0x7B => self.execute_transition(PUSH28),
+            0x7C => self.execute_transition(PUSH29),
+            0x7D => self.execute_transition(PUSH30),
+            0x7E => self.execute_transition(PUSH31),
+            0x7F => self.execute_transition(PUSH32),
+            0x80 => self.execute_transition(DUP1),
+            0x81 => self.execute_transition(DUP2),
+            0x82 => self.execute_transition(DUP3),
+            0x83 => self.execute_transition(DUP4),
+            0x84 => self.execute_transition(DUP5),
+            0x85 => self.execute_transition(DUP6),
+            0x86 => self.execute_transition(DUP7),
+            0x87 => self.execute_transition(DUP8),
+            0x88 => self.execute_transition(DUP9),
+            0x89 => self.execute_transition(DUP10),
+            0x8A => self.execute_transition(DUP11),
+            0x8B => self.execute_transition(DUP12),
+            0x8C => self.execute_transition(DUP13),
+            0x8D => self.execute_transition(DUP14),
+            0x8E => self.execute_transition(DUP15),
+            0x8F => self.execute_transition(DUP16),
+            0x90 => self.execute_transition(SWAP1),
+            0x91 => self.execute_transition(SWAP2),
+            0x92 => self.execute_transition(SWAP3),
+            0x93 => self.execute_transition(SWAP4),
+            0x94 => self.execute_transition(SWAP5),
+            0x95 => self.execute_transition(SWAP6),
+            0x96 => self.execute_transition(SWAP7),
+            0x97 => self.execute_transition(SWAP8),
+            0x98 => self.execute_transition(SWAP9),
+            0x99 => self.execute_transition(SWAP10),
+            0x9A => self.execute_transition(SWAP11),
+            0x9B => self.execute_transition(SWAP12),
+            0x9C => self.execute_transition(SWAP13),
+            0x9D => self.execute_transition(SWAP14),
+            0x9E => self.execute_transition(SWAP15),
+            0x9F => self.execute_transition(SWAP16),
+            0xA0 => self.execute_transition(LOG0),
+            0xA1 => self.execute_transition(LOG1),
+            0xA2 => self.execute_transition(LOG2),
+            0xA3 => self.execute_transition(LOG3),
+            0xA4 => self.execute_transition(LOG4),
+            0xF0 => self.execute_transition(CREATE),
+            0xF1 => self.execute_transition(CALL),
+            0xF2 => self.execute_transition(CALLCODE),
+            0xF3 => self.execute_transition(RETURN),
+            0xF4 => self.execute_transition(DELEGATECALL),
+            0xF5 => self.execute_transition(CREATE2),
+            0xFA => self.execute_transition(STATICCALL),
+            0xFD => self.execute_transition(REVERT),
+            0xFE => self.execute_transition(INVALID),
+            0xFF => self.execute_transition(SELFDESTRUCT),
+            _ => self.execute_transition(INVALID),
+        }
+    }
+
 }
 
 #[cfg(test)]
