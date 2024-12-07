@@ -17,6 +17,7 @@ struct State {
     storage: Storage<u256, u256>,
     stop_flag: bool,
     pc: usize,
+    returndata: Vec<u8>,
     transaction: Transaction,
     transient: Transient,
 }
@@ -38,6 +39,7 @@ impl State {
             storage: Storage::new(parameters.initial_storage),
             stop_flag: false,
             pc: 0,
+            returndata: Default::default(),
             transaction: parameters.transaction,
             transient: Transient::new(),
         }
@@ -50,6 +52,7 @@ impl State {
             gas: &self.remaining_gas,
             memory: &mut self.memory,
             pc: &mut self.pc,
+            returndata: &mut self.returndata,
             stop_flag: &mut self.stop_flag,
             storage: &mut self.storage,
             transaction: &self.transaction,
