@@ -228,7 +228,11 @@ pub static TSTORE: TransitionFunction<2, 0> = |context, [key, value]| {
     context.transient.store(key, value);
     Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 })
 };
-// TODO (fguerin - 23/11/2024) Implement opcode 0x5E
+pub static MCOPY: TransitionFunction<3, 0> = |context, [dest_offset, offset, size]| {
+    let value = context.memory.load(offset, size)?;
+    let ReadWriteOperation { size, extension_cost, .. } = context.memory.store(dest_offset, size, value.result)?;
+    Ok(TransitionFunctionOutput { cost: 3 + 3 * size / 32 + extension_cost, result: [], jump: 1 })
+};
 pub static PUSH0: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, &context.transaction.data, 0));
 pub static PUSH1: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, &context.transaction.data, 1));
 pub static PUSH2: TransitionFunction<0, 1> = |context, []| Ok(push_n(*context.pc, &context.transaction.data, 2));
@@ -874,6 +878,17 @@ mod tests {
 
         assert_eq!(TSTORE(&mut context, [uint!("1"), uint!("55")]), Ok(TransitionFunctionOutput { cost: 100, result: [], jump: 1 }));
         assert_eq!(context.transient.0.get(&uint!("1")), Some(&uint!("55")));
+    }
+
+    #[test]
+    fn mcopy() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: U256::ZERO }, gas: &50, memory: &mut Memory(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(MCOPY(&mut context, [uint!("0"), uint!("32"), uint!("32")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+
+        assert_eq!(MCOPY(&mut context, [uint!("4"), uint!("8"), uint!("16")]), Ok(TransitionFunctionOutput { cost: 4, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
     }
 
     #[test]
