@@ -342,7 +342,12 @@ pub static REVERT: TransitionFunction<2, 0> = |context, [offset, size]| {
     *context.returndata = result;
     Ok(TransitionFunctionOutput { cost: extension_cost, result: [], jump: 0 })
 };
-pub static INVALID: TransitionFunction<0, 0> = |_, []| todo!();
+pub static INVALID: TransitionFunction<0, 0> = |context, []| {
+    *context.stop_flag = true;
+    *context.revert_flag = true;
+    *context.returndata = vec![];
+    Ok(TransitionFunctionOutput { cost: *context.gas, result: [], jump: 0 })
+};
 pub static SELFDESTRUCT: TransitionFunction<1, 0> = |_, [_address]| todo!();
 
 #[cfg(test)]
@@ -1120,5 +1125,18 @@ mod tests {
         assert!(*context.stop_flag);
         assert!(*context.revert_flag);
         assert_eq!(*context.returndata, vec![0xFF, 1]);
+    }
+
+    #[test]
+    fn invalid() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: U256::ZERO }, gas: &50, memory: &mut Memory(vec![0xFF, 1]), pc: &mut 0, stop_flag: &mut false, revert_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
+
+        assert!(!*context.stop_flag);
+        assert!(!*context.revert_flag);
+        assert_eq!(*context.returndata, vec![]);
+        assert_eq!(INVALID(&mut context, []), Ok(TransitionFunctionOutput { cost: 50, result: [], jump: 0 }));
+        assert!(*context.stop_flag);
+        assert!(*context.revert_flag);
+        assert_eq!(*context.returndata, vec![]);
     }
 }
