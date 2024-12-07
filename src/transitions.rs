@@ -174,7 +174,25 @@ pub static CALLDATACOPY: TransitionFunction<3, 0> = |context, [dest_offset, offs
     let ReadWriteOperation { size, extension_cost, .. } = context.memory.store(dest_offset, size, value.to_vec())?;
     Ok(TransitionFunctionOutput { cost: 3 + 3 * (size + 31) / 32 + extension_cost, result: [], jump: 1 })
 };
-// TODO (fguerin - 7/12/2024) Implement opcodes 0x38 - 0x4A
+pub static CODESIZE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static CODECOPY: TransitionFunction<3, 0> = |_, [_dest_offset, _offset, _size]| todo!();
+pub static GASPRICE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static EXTCODESIZE: TransitionFunction<1, 1> = |_, [_address]| todo!();
+pub static EXTCODECOPY: TransitionFunction<4, 0> = |_, [_address, _dest_offset, _offset, _size]| todo!();
+pub static RETURNDATASIZE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static RETURNDATACOPY: TransitionFunction<3, 0> = |_, [_dest_offset, _offset, _size]| todo!();
+pub static EXTCODEHASH: TransitionFunction<1, 1> = |_, [_address]| todo!();
+pub static BLOCKHASH: TransitionFunction<1, 1> = |_, [_block]| todo!();
+pub static COINBASE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static TIMESTAMP: TransitionFunction<0, 1> = |_, []| todo!();
+pub static NUMBER: TransitionFunction<0, 1> = |_, []| todo!();
+pub static PREVRANDAO: TransitionFunction<0, 1> = |_, []| todo!();
+pub static GASLIMIT: TransitionFunction<0, 1> = |_, []| todo!();
+pub static CHAINID: TransitionFunction<0, 1> = |_, []| todo!();
+pub static SELFBALANCE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static BASEFEE: TransitionFunction<0, 1> = |_, []| todo!();
+pub static BLOBHASH: TransitionFunction<1, 1> = |_, [_index]| todo!();
+pub static BLOBBASEFEE: TransitionFunction<0, 1> = |_, []| todo!();
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
@@ -298,6 +316,21 @@ pub static SWAP13: TransitionFunction<14, 14> = |_, input| Ok(swap_n::<14>(input
 pub static SWAP14: TransitionFunction<15, 15> = |_, input| Ok(swap_n::<15>(input));
 pub static SWAP15: TransitionFunction<16, 16> = |_, input| Ok(swap_n::<16>(input));
 pub static SWAP16: TransitionFunction<17, 17> = |_, input| Ok(swap_n::<17>(input));
+pub static LOG0: TransitionFunction<2, 0> = |_, [_offset, _size, _topics @ ..]| todo!();
+pub static LOG1: TransitionFunction<3, 0> = |_, [_offset, _size, _topics @ ..]| todo!();
+pub static LOG2: TransitionFunction<4, 0> = |_, [_offset, _size, _topics @ ..]| todo!();
+pub static LOG3: TransitionFunction<5, 0> = |_, [_offset, _size, _topics @ ..]| todo!();
+pub static LOG4: TransitionFunction<6, 0> = |_, [_offset, _size, _topics @ ..]| todo!();
+pub static CREATE: TransitionFunction<3, 1> = |_, [_value, _offset, _size]| todo!();
+pub static CALL: TransitionFunction<7, 1> = |_, [_gas, _address, _value, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
+pub static CALLCODE: TransitionFunction<7, 1> = |_, [_gas, _address, _value, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
+pub static RETURN: TransitionFunction<2, 0> = |_, [_offset, _size]| todo!();
+pub static DELEGATECALL: TransitionFunction<6, 1> = |_, [_gas, _address, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
+pub static CREATE2: TransitionFunction<4, 1> = |_, [_value, _offset, _size, _salt]| todo!();
+pub static STATICCALL: TransitionFunction<6, 1> = |_, [_gas, _address, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
+pub static REVERT: TransitionFunction<2, 0> = |_, [_offset, _size]| todo!();
+pub static INVALID: TransitionFunction<0, 0> = |_, []| todo!();
+pub static SELFDESTRUCT: TransitionFunction<1, 0> = |_, [_address]| todo!();
 
 #[cfg(test)]
 mod tests {
