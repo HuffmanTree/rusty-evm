@@ -1,4 +1,7 @@
 use ethnum::{u256, U256};
+use rlp::RlpStream;
+
+use crate::utils::Hash;
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Address(pub u256);
@@ -34,10 +37,63 @@ pub struct Transaction {
     pub value: u256,
 }
 
+impl Transaction {
+    pub fn contract_address(&self) -> Address {
+        let Self { mut from, mut nonce, to, .. } = self;
+        if to.0 == U256::ZERO { // keccak256(rlp([sender, nonce]))
+            let mut from_vec: Vec<u8> = vec![];
+            for _ in 0..20 {
+                from_vec.push((from.0 & 0xFF).try_into().unwrap());
+                from.0 >>= 8;
+            }
+            from_vec.reverse();
+            let mut nonce_vec: Vec<u8> = vec![];
+            while nonce != 0 {
+                nonce_vec.push((nonce & 0xFF).try_into().unwrap());
+                nonce >>= 8;
+            }
+            nonce_vec.reverse();
+            let mut stream = RlpStream::new_list(2);
+            stream.append(&from_vec).append(&nonce_vec);
+            Address(stream.out().to_vec().keccak256() & u256::from_str_hex("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap())
+        } else {
+            *to
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ethnum::uint;
     use super::*;
+
+    #[test]
+    fn contract_address() {
+        let transaction = Transaction {
+            data: Default::default(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0D")),
+            nonce: 0,
+            value: uint!("4"),
+        };
+        assert_eq!(transaction.contract_address(), Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0D")));
+    }
+
+    #[test]
+    fn contract_address_creation() {
+        let transaction = Transaction {
+            data: Default::default(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            to: Address(uint!("0")),
+            nonce: 7,
+            value: uint!("4"),
+        };
+        assert_eq!(transaction.nonce, 7);
+        assert_eq!(transaction.contract_address(), Address(uint!("0xD0CB8E86E90C8170565878A666070ADD140B39D3"))); // keccak256(rlp([from, nonce]))
+        assert_eq!(transaction.nonce, 7);
+    }
 
     #[test]
     fn u256_try_into_address() {

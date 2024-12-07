@@ -6,7 +6,6 @@ use crate::transaction::{Account, Address, Transaction};
 use crate::transient::Transient;
 use crate::utils::{Hash, IsNeg, NeededSizeInBytes, WrappingBigPow, WrappingSignedDiv, WrappingSignedRem};
 use crate::memory::{Memory, ReadWriteOperation};
-use rlp::RlpStream;
 
 pub struct TransitionContext<'a> {
     pub accounts: &'a mut Storage<Address, Account>,
@@ -131,24 +130,7 @@ pub static KECCAK256: TransitionFunction<2, 1> = |context, [offset, size]| {
     let ReadWriteOperation { size, extension_cost, result, .. } = context.memory.load(offset, size)?;
     Ok(TransitionFunctionOutput { cost: 30 + 6 * (size + 31) / 32 + extension_cost, result: [result.keccak256()], jump: 1 })
 };
-pub static ADDRESS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [if context.transaction.to.0 == U256::ZERO { // keccak256(rlp([sender, nonce]))
-    let Transaction { mut from, mut nonce, .. } = *context.transaction;
-    let mut from_vec: Vec<u8> = vec![];
-    for _ in 0..20 {
-        from_vec.push((from.0 & 0xFF).try_into().unwrap());
-        from.0 >>= 8;
-    }
-    from_vec.reverse();
-    let mut nonce_vec: Vec<u8> = vec![];
-    while nonce != 0 {
-        nonce_vec.push((nonce & 0xFF).try_into().unwrap());
-        nonce >>= 8;
-    }
-    nonce_vec.reverse();
-    let mut stream = RlpStream::new_list(2);
-    stream.append(&from_vec).append(&nonce_vec);
-    stream.out().to_vec().keccak256() & u256::from_str_hex("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()
-} else { context.transaction.to.0 }], jump: 1 });
+pub static ADDRESS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.contract_address().0], jump: 1 });
 pub static BALANCE: TransitionFunction<1, 1> = |context, [address]| {
     let account = context.accounts.load(address.try_into()?);
     Ok(TransitionFunctionOutput { cost: if account.warm { 100 } else { 2600 }, result: [account.value.balance], jump: 1 })
