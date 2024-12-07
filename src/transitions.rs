@@ -325,7 +325,12 @@ pub static LOG4: TransitionFunction<6, 0> = |_, [_offset, _size, _topics @ ..]| 
 pub static CREATE: TransitionFunction<3, 1> = |_, [_value, _offset, _size]| todo!();
 pub static CALL: TransitionFunction<7, 1> = |_, [_gas, _address, _value, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
 pub static CALLCODE: TransitionFunction<7, 1> = |_, [_gas, _address, _value, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
-pub static RETURN: TransitionFunction<2, 0> = |_, [_offset, _size]| todo!();
+pub static RETURN: TransitionFunction<2, 0> = |context, [offset, size]| {
+    let ReadWriteOperation { extension_cost, result, .. } = context.memory.load(offset, size)?;
+    *context.stop_flag = true;
+    *context.returndata = result;
+    Ok(TransitionFunctionOutput { cost: extension_cost, result: [], jump: 0 })
+};
 pub static DELEGATECALL: TransitionFunction<6, 1> = |_, [_gas, _address, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
 pub static CREATE2: TransitionFunction<4, 1> = |_, [_value, _offset, _size, _salt]| todo!();
 pub static STATICCALL: TransitionFunction<6, 1> = |_, [_gas, _address, _args_offset, _args_size, _ret_offset, _ret_size]| todo!();
@@ -1084,5 +1089,16 @@ mod tests {
             SWAP16(&mut context, [uint!("1"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("2")]),
             Ok(TransitionFunctionOutput { cost: 3, result: [uint!("2"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("0"), uint!("1")], jump: 1 }),
         );
+    }
+
+    #[test]
+    fn r#return() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: U256::ZERO }, gas: &50, memory: &mut Memory(vec![0xFF, 1]), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
+
+        assert!(!*context.stop_flag);
+        assert_eq!(*context.returndata, vec![]);
+        assert_eq!(RETURN(&mut context, [uint!("0"), uint!("2")]), Ok(TransitionFunctionOutput { cost: 0, result: [], jump: 0 }));
+        assert!(*context.stop_flag);
+        assert_eq!(*context.returndata, vec![0xFF, 1]);
     }
 }
