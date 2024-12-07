@@ -65,6 +65,7 @@ impl State {
         let output = f(&mut context, input)?;
         if output.cost > self.remaining_gas { self.remaining_gas = 0; return Err(Error::OutOfGas); }
         self.remaining_gas -= output.cost;
+        self.pc += output.jump;
         for o in (0..O).rev() {
             self.stack.push(output.result[o])?;
         }
@@ -218,6 +219,23 @@ mod tests {
 
         // the input transaction gas is untouched
         assert_eq!(state.transaction.gas, 7);
+    }
+
+    #[test]
+    fn moves_code_pointer() {
+        let mut state = State::new(StateParameters { initial_storage: Default::default(), initial_accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+
+        assert_eq!(state.pc, 0);
+
+        assert_eq!(state.execute_transition(
+            |_, _: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [], jump: 1 })
+        ), Ok(TransitionOutput { cost: 3, jump: 1 }));
+        assert_eq!(state.pc, 1);
+
+        assert_eq!(state.execute_transition(
+            |_, _: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [], jump: 2 })
+        ), Ok(TransitionOutput { cost: 3, jump: 2 }));
+        assert_eq!(state.pc, 3);
     }
 
     #[test]
