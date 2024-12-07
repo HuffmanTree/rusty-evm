@@ -168,7 +168,13 @@ pub static CALLDATALOAD: TransitionFunction<1, 1> = |context, [offset]| Ok(Trans
     }
 ], jump: 1 });
 pub static CALLDATASIZE: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.data.len().as_u256()], jump: 1 });
-// TODO (fguerin - 1/12/2024) Implement opcodes 0x37 - 0x4A
+pub static CALLDATACOPY: TransitionFunction<3, 0> = |context, [dest_offset, offset, size]| {
+    let (calldata_offset, calldata_size): (usize, usize) = (offset.try_into().unwrap(), size.try_into().unwrap()); // TODO (fguerin - 7/12/2024) Handle calldata out of bounds
+    let value = &context.transaction.data[calldata_offset..min(context.transaction.data.len(), calldata_offset + calldata_size)];
+    let ReadWriteOperation { size, extension_cost, .. } = context.memory.store(dest_offset, size, value.to_vec())?;
+    Ok(TransitionFunctionOutput { cost: 3 + 3 * (size + 31) / 32 + extension_cost, result: [], jump: 1 })
+};
+// TODO (fguerin - 7/12/2024) Implement opcodes 0x38 - 0x4A
 pub static POP: TransitionFunction<1, 0> = |_, [_x]| Ok(TransitionFunctionOutput { cost: 2, result: [], jump: 1 });
 pub static MLOAD: TransitionFunction<1, 1> = |context, [offset]| {
     let ReadWriteOperation { extension_cost, result, .. } = context.memory.load_word(offset)?;
@@ -651,6 +657,17 @@ mod tests {
         let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: vec![0xFF, 0xFF], from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
 
         assert_eq!(CALLDATASIZE(&mut context, []), Ok(TransitionFunctionOutput { cost: 2, result: [uint!("2")], jump: 1 }));
+    }
+
+    #[test]
+    fn calldatacopy() {
+        let mut context = TransitionContext { accounts: &mut Default::default(), caller: &Default::default(), transaction: &Transaction { data: vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), gas: 0, value: uint!("42") }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new() };
+
+        assert_eq!(CALLDATACOPY(&mut context, [uint!("0"), uint!("0"), uint!("32")]), Ok(TransitionFunctionOutput { cost: 11, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+
+        assert_eq!(CALLDATACOPY(&mut context, [uint!("0"), uint!("31"), uint!("8")]), Ok(TransitionFunctionOutput { cost: 6, result: [], jump: 1 }));
+        assert_eq!(context.memory.0, vec![0xFF, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
     }
 
     #[test]
