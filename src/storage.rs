@@ -1,27 +1,27 @@
 use std::{collections::HashMap, hash::Hash};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StorageValue<V> {
     pub original_value: V,
     pub value: V,
     pub warm: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Storage<K, V>(pub HashMap<K, StorageValue<V>>);
 
-impl<K, V> Storage<K, V> where K: Hash + Eq, V: Default + Clone + Copy {
+impl<K, V> Storage<K, V> where K: Hash + Eq, V: Default + Clone {
     pub fn new(init: HashMap::<K, V>) -> Self {
         let mut store = HashMap::<K, StorageValue<V>>::new();
         for (key, value) in init {
-            store.insert(key, StorageValue { original_value: value, value, warm: false });
+            store.insert(key, StorageValue { original_value: value.clone(), value, warm: false });
         }
         Self(store)
     }
 
     pub fn store(&mut self, key: K, value: V) -> Option<StorageValue<V>> {
         match self.0.get(&key) {
-            Some(v) => self.0.insert(key, StorageValue { original_value: v.original_value, value, warm: true }),
+            Some(v) => self.0.insert(key, StorageValue { original_value: v.original_value.clone(), value, warm: true }),
             None => self.0.insert(key, StorageValue { original_value: Default::default(), value, warm: true }),
         }
     }

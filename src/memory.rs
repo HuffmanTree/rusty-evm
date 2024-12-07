@@ -2,7 +2,7 @@ use ethnum::{u256, U256};
 
 use crate::errors::Error;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Memory(pub Vec<u8>);
 
 #[derive(Debug, PartialEq, Eq)]

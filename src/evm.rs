@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use ethnum::u256;
-use crate::{errors::Error, state::{State, StateParameters}, storage::Storage, transaction::{Address, Transaction}};
+use crate::{errors::Error, state::{State, StateParameters}, storage::Storage, transaction::{Account, Address, Transaction}};
 
 struct EVM {
-    accounts: Storage<Address, u256>,
+    accounts: Storage<Address, Account>,
     storage: Storage<u256, u256>,
 }
 
 struct Parameters {
-    initial_accounts: HashMap::<Address, u256>,
+    initial_accounts: HashMap::<Address, Account>,
     initial_storage: HashMap::<u256, u256>,
 }
 

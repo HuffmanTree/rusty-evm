@@ -17,7 +17,14 @@ impl TryInto::<Address> for u256 {
     }
 }
 
-#[derive(Default)]
+
+#[derive(Debug, Default, Clone)]
+pub struct Account {
+    pub balance: u256,
+    pub code: Vec<u8>,
+}
+
+#[derive(Default, Debug)]
 pub struct Transaction {
     pub data: Vec<u8>,
     pub from: Address,

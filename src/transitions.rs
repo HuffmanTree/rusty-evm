@@ -2,14 +2,14 @@ use std::cmp::min;
 use ethnum::{u256, AsU256, U256};
 use crate::errors::Error;
 use crate::storage::Storage;
-use crate::transaction::{Address, Transaction};
+use crate::transaction::{Account, Address, Transaction};
 use crate::transient::Transient;
 use crate::utils::{Hash, IsNeg, NeededSizeInBytes, WrappingBigPow, WrappingSignedDiv, WrappingSignedRem};
 use crate::memory::{Memory, ReadWriteOperation};
 use rlp::RlpStream;
 
 pub struct TransitionContext<'a> {
-    pub accounts: &'a mut Storage<Address, u256>,
+    pub accounts: &'a mut Storage<Address, Account>,
     pub caller: &'a Address,
     pub gas: &'a usize,
     pub memory: &'a mut Memory,
@@ -150,8 +150,8 @@ pub static ADDRESS: TransitionFunction<0, 1> = |context, []| Ok(TransitionFuncti
     stream.out().to_vec().keccak256() & u256::from_str_hex("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()
 } else { context.transaction.to.0 }], jump: 1 });
 pub static BALANCE: TransitionFunction<1, 1> = |context, [address]| {
-    let balance = context.accounts.load(address.try_into()?);
-    Ok(TransitionFunctionOutput { cost: if balance.warm { 100 } else { 2600 }, result: [balance.value], jump: 1 })
+    let account = context.accounts.load(address.try_into()?);
+    Ok(TransitionFunctionOutput { cost: if account.warm { 100 } else { 2600 }, result: [account.value.balance], jump: 1 })
 };
 pub static ORIGIN: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.transaction.from.0], jump: 1 });
 pub static CALLER: TransitionFunction<0, 1> = |context, []| Ok(TransitionFunctionOutput { cost: 2, result: [context.caller.0], jump: 1 });
@@ -667,8 +667,8 @@ mod tests {
 
     #[test]
     fn balance() {
-        let mut initial_accounts: HashMap::<Address, u256> = Default::default();
-        initial_accounts.insert(Address(uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")), uint!("125985"));
+        let mut initial_accounts: HashMap::<Address, Account> = Default::default();
+        initial_accounts.insert(Address(uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")), Account { balance: uint!("125985"), code: vec![] });
         let mut context = TransitionContext { accounts: &mut Storage::new(initial_accounts), caller: &Default::default(), transaction: &Transaction { data: Default::default(), from: Address(U256::ZERO), nonce: 0, to: Address(uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")), gas: 0, value: U256::ZERO }, gas: &50, memory: &mut Memory::new(), pc: &mut 0, stop_flag: &mut false, revert_flag: &mut false, storage: &mut Storage::new(Default::default()), transient: &mut Transient::new(), returndata: &mut Default::default() };
 
         assert_eq!(BALANCE(&mut context, [uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")]), Ok(TransitionFunctionOutput { cost: 2600, result: [uint!("125985")], jump: 1 }));
