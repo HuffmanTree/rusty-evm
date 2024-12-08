@@ -8,29 +8,29 @@ use crate::transient::Transient;
 use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput, ADD, ADDMOD, ADDRESS, AND, BALANCE, BASEFEE, BLOBBASEFEE, BLOBHASH, BLOCKHASH, BYTE, CALL, CALLCODE, CALLDATACOPY, CALLDATALOAD, CALLDATASIZE, CALLER, CALLVALUE, CHAINID, CODECOPY, CODESIZE, COINBASE, CREATE, CREATE2, DELEGATECALL, DIV, DUP1, DUP10, DUP11, DUP12, DUP13, DUP14, DUP15, DUP16, DUP2, DUP3, DUP4, DUP5, DUP6, DUP7, DUP8, DUP9, EQ, EXP, EXTCODECOPY, EXTCODEHASH, EXTCODESIZE, GAS, GASLIMIT, GASPRICE, GT, INVALID, ISZERO, JUMP, JUMPDEST, JUMPI, KECCAK256, LOG0, LOG1, LOG2, LOG3, LOG4, LT, MCOPY, MLOAD, MOD, MSIZE, MSTORE, MSTORE8, MUL, MULMOD, NOT, NUMBER, OR, ORIGIN, PC, POP, PREVRANDAO, PUSH0, PUSH1, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH2, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH3, PUSH30, PUSH31, PUSH32, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, RETURN, RETURNDATACOPY, RETURNDATASIZE, REVERT, SAR, SDIV, SELFBALANCE, SELFDESTRUCT, SGT, SHL, SHR, SIGNEXTEND, SLOAD, SLT, SMOD, SSTORE, STATICCALL, STOP, SUB, SWAP1, SWAP10, SWAP11, SWAP12, SWAP13, SWAP14, SWAP15, SWAP16, SWAP2, SWAP3, SWAP4, SWAP5, SWAP6, SWAP7, SWAP8, SWAP9, TIMESTAMP, TLOAD, TSTORE, XOR};
 
 #[derive(Debug)]
-pub struct State {
-    accounts: Storage<Address, Account>,
+pub struct State<'a> {
+    accounts: &'a mut Storage<Address, Account>,
     latest_caller: Address,
     remaining_gas: usize,
     stack: Stack,
     memory: Memory,
-    storage: Storage<u256, u256>,
+    storage: &'a mut Storage<u256, u256>,
     pub stop_flag: bool,
     pub pc: usize,
-    returndata: Vec<u8>,
+    pub returndata: Vec<u8>,
     revert_flag: bool,
     transaction: Transaction,
     transient: Transient,
 }
 
-pub struct StateParameters {
-    pub accounts: Storage<Address, Account>,
-    pub storage: Storage<u256, u256>,
+pub struct StateParameters<'a> {
+    pub accounts: &'a mut Storage<Address, Account>,
+    pub storage: &'a mut Storage<u256, u256>,
     pub transaction: Transaction,
 }
 
-impl State {
-    pub fn new(parameters: StateParameters) -> Self {
+impl<'a> State<'a> {
+    pub fn new(parameters: StateParameters<'a>) -> Self {
         Self {
             accounts: parameters.accounts,
             latest_caller: parameters.transaction.from,
@@ -49,7 +49,7 @@ impl State {
 
     fn execute_transition<const I: usize, const O: usize>(&mut self, f: TransitionFunction<I, O>) -> Result<TransitionOutput, Error> {
         let mut context = TransitionContext {
-            accounts: &mut self.accounts,
+            accounts: self.accounts,
             caller: &self.latest_caller,
             gas: &self.remaining_gas,
             memory: &mut self.memory,
@@ -57,7 +57,7 @@ impl State {
             returndata: &mut self.returndata,
             stop_flag: &mut self.stop_flag,
             revert_flag: &mut self.revert_flag,
-            storage: &mut self.storage,
+            storage: self.storage,
             transaction: &self.transaction,
             transient: &mut self.transient,
         };
@@ -244,7 +244,9 @@ mod tests {
 
     #[test]
     fn handles_gas() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -269,7 +271,9 @@ mod tests {
 
     #[test]
     fn moves_code_pointer() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
 
         assert_eq!(state.pc, 0);
 
@@ -286,7 +290,9 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_not_enough_parmeters_in_stack() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, input: [u256; 1]| Ok(TransitionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -295,7 +301,9 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_too_much_outputs() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Ok(TransitionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -304,7 +312,9 @@ mod tests {
 
     #[test]
     fn transition_builder_fails_if_transition_function_fails() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_transition(
             |_, _input: [u256; 0]| Result::<TransitionFunctionOutput<0>, Error>::Err(Error::InvalidJumpDest)
@@ -313,7 +323,9 @@ mod tests {
 
     #[test]
     fn preserve_stack_order() {
-        let mut state = State::new(StateParameters { storage: Default::default(), accounts: Default::default(), transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut storage: Storage<u256, u256> = Default::default();
+        let mut accounts: Storage<Address, Account> = Default::default();
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         state.stack.push(uint!("0x0C")).unwrap();
         state.stack.push(uint!("0x0B")).unwrap();

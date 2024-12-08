@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use ethnum::u256;
+use ethnum::{u256, U256};
 use crate::{errors::Error, state::{State, StateParameters}, storage::Storage, transaction::{Account, Address, Transaction}};
 
 struct EVM {
@@ -20,10 +20,15 @@ impl EVM {
         }
     }
 
-    fn run(self: EVM, transaction: Transaction) -> Result<(), Error> {
+    fn run(&mut self, transaction: Transaction) -> Result<(), Error> {
+        if transaction.to.0 == U256::ZERO {
+            let tx = transaction.clone();
+            self.accounts.store(tx.contract_address(), Account { balance: tx.value, code: tx.data });
+        }
+
         let mut state = State::new(StateParameters {
-            accounts: self.accounts,
-            storage: self.storage,
+            accounts: &mut self.accounts,
+            storage: &mut self.storage,
             transaction,
         });
 
@@ -43,7 +48,7 @@ mod tests {
 
     #[test]
     fn simple_add() {
-        let evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
+        let mut evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
 
         assert!(evm.run(Transaction {
             data: vec![0x60, 0x42, 0x60, 0xFF, 0x01], // PUSH1 0x42 PUSH1 0xFF ADD
@@ -57,7 +62,7 @@ mod tests {
 
     #[test]
     fn out_of_gas() {
-        let evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
+        let mut evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
 
         assert_eq!(evm.run(Transaction {
             data: vec![0x60, 0x42, 0x60, 0xFF, 0x01], // PUSH1 0x42 PUSH1 0xFF ADD

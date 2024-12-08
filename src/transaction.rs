@@ -27,7 +27,7 @@ pub struct Account {
     pub code: Vec<u8>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Transaction {
     pub data: Vec<u8>,
     pub from: Address,
