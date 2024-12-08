@@ -72,6 +72,22 @@ mod tests {
     }
 
     #[test]
+    fn return_simple_add() {
+        let mut evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
+
+        // 0x42 + 0xFF = 321
+        // 256 + 65 = 321
+        assert_eq!(evm.run(Transaction {
+            data: vec![0x60, 0x42, 0x60, 0xFF, 0x01, 0x5F, 0x52, 0x60, 0x20, 0x5F, 0xF3], // PUSH1 0x42 PUSH1 0xFF ADD PUSH0 MSTORE PUSH1 0x20 PUSH0 RETURN
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 50,
+            nonce: 0,
+            to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            value: uint!("0"),
+        }), Ok(OperationResult { data: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 65], remaining_gas: 28, revert: false }));
+    }
+
+    #[test]
     fn out_of_gas() {
         let mut evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
 
