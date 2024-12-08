@@ -2,7 +2,7 @@ use ethnum::u256;
 
 use crate::errors::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Stack {
     size: u16,
     top: i32,

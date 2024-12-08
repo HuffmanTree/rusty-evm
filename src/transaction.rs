@@ -32,9 +32,19 @@ pub struct Transaction {
     pub data: Vec<u8>,
     pub from: Address,
     pub gas: usize,
+    pub gas_price: usize,
     pub nonce: usize,
     pub to: Address,
     pub value: u256,
+}
+
+#[derive(Default)]
+pub struct Block {
+    pub difficulty: u256,
+    pub gas_limit: u256,
+    pub miner: Address,
+    pub number: u256,
+    pub time: u256,
 }
 
 impl Transaction {
@@ -73,6 +83,7 @@ mod tests {
             data: Default::default(),
             from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
             gas: 1,
+            gas_price: 1,
             to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0D")),
             nonce: 0,
             value: uint!("4"),
@@ -86,6 +97,7 @@ mod tests {
             data: Default::default(),
             from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
             gas: 1,
+            gas_price: 1,
             to: Address(uint!("0")),
             nonce: 7,
             value: uint!("4"),
