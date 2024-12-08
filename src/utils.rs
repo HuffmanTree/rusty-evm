@@ -25,7 +25,7 @@ impl Hash for Vec<u8> {
         for i in 0..32 {
             result <<= 8;
             result |= u256::from(match arr.get(i) {
-                Some(v) => v.clone(),
+                Some(v) => *v,
                 None => 0,
             });
         }
@@ -52,7 +52,7 @@ impl IsNeg for u256 {
 
 impl Abs for u256 {
     fn abs(&self) -> Self {
-        if self.is_neg() { self.wrapping_neg() } else { self.clone() }
+        if self.is_neg() { self.wrapping_neg() } else { *self }
     }
 }
 
@@ -79,7 +79,7 @@ impl WrappingBigPow for u256 {
             _ => {
                 let ep = e.div_euclid(u32::MAX.into());
                 let r: u32 = e.rem_euclid(u32::MAX.into()).try_into().unwrap();
-                self.wrapping_pow(u32::MAX.into()).wrapping_big_pow(ep).wrapping_mul(self.wrapping_pow(r))
+                self.wrapping_pow(u32::MAX).wrapping_big_pow(ep).wrapping_mul(self.wrapping_pow(r))
             }
         }
     }
