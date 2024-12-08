@@ -246,7 +246,7 @@ mod tests {
     fn handles_gas() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, gas_price: 7, value: U256::ZERO } });
 
         assert_eq!(state.remaining_gas, 7);
 
@@ -273,7 +273,7 @@ mod tests {
     fn moves_code_pointer() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), gas_price: 7, nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 7, value: U256::ZERO } });
 
         assert_eq!(state.pc, 0);
 
@@ -292,7 +292,7 @@ mod tests {
     fn instruction_builder_fails_if_not_enough_parmeters_in_stack() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), gas_price: 7, nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_instruction(
             |_, input: [u256; 1]| Ok(InstructionFunctionOutput { cost: 3, result: [input[0]], jump: 1 })
@@ -303,7 +303,7 @@ mod tests {
     fn instruction_builder_fails_if_too_much_outputs() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), gas_price: 7, nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_instruction(
             |_, _input: [u256; 0]| Ok(InstructionFunctionOutput { cost: 3, result: [U256::ZERO; 1025], jump: 1 })
@@ -314,7 +314,7 @@ mod tests {
     fn instruction_builder_fails_if_instruction_function_fails() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), gas_price: 7, nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         assert_eq!(state.execute_instruction(
             |_, _input: [u256; 0]| Result::<InstructionFunctionOutput<0>, Error>::Err(Error::InvalidJumpDest)
@@ -325,7 +325,7 @@ mod tests {
     fn preserve_stack_order() {
         let mut storage: Storage<u256, u256> = Default::default();
         let mut accounts: Storage<Address, Account> = Default::default();
-        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
+        let mut state = State::new(StateParameters { storage: &mut storage, accounts: &mut accounts, transaction: Transaction { from: Address(U256::ZERO), gas_price: 7, nonce: 0, to: Address(U256::ZERO), data: Default::default(), gas: 20, value: U256::ZERO } });
 
         state.stack.push(uint!("0x0C")).unwrap();
         state.stack.push(uint!("0x0B")).unwrap();
