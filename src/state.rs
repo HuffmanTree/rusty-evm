@@ -11,14 +11,14 @@ use crate::transitions::{TransitionContext, TransitionFunction, TransitionOutput
 pub struct State<'a> {
     accounts: &'a mut Storage<Address, Account>,
     latest_caller: Address,
-    remaining_gas: usize,
+    pub remaining_gas: usize,
     stack: Stack,
     memory: Memory,
     storage: &'a mut Storage<u256, u256>,
     pub stop_flag: bool,
     pub pc: usize,
     pub returndata: Vec<u8>,
-    revert_flag: bool,
+    pub revert_flag: bool,
     transaction: Transaction,
     transient: Transient,
 }

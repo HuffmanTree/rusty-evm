@@ -12,6 +12,13 @@ struct Parameters {
     initial_storage: HashMap::<u256, u256>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+struct OperationResult {
+    data: Vec<u8>,
+    remaining_gas: usize,
+    revert: bool,
+}
+
 impl EVM {
     fn new(parameters: Parameters) -> Self {
         Self {
@@ -20,7 +27,7 @@ impl EVM {
         }
     }
 
-    fn run(&mut self, transaction: Transaction) -> Result<(), Error> {
+    fn run(&mut self, transaction: Transaction) -> Result<OperationResult, Error> {
         if transaction.to.0 == U256::ZERO {
             let tx = transaction.clone();
             self.accounts.store(tx.contract_address(), Account { balance: tx.value, code: tx.data });
@@ -36,7 +43,11 @@ impl EVM {
             state.execute_next_opcode()?;
         }
 
-        Ok(())
+        Ok(OperationResult {
+            data: state.returndata,
+            remaining_gas: state.remaining_gas,
+            revert: state.revert_flag,
+        })
     }
 }
 
@@ -50,14 +61,14 @@ mod tests {
     fn simple_add() {
         let mut evm = EVM::new(Parameters { initial_storage: Default::default(), initial_accounts: Default::default() });
 
-        assert!(evm.run(Transaction {
+        assert_eq!(evm.run(Transaction {
             data: vec![0x60, 0x42, 0x60, 0xFF, 0x01], // PUSH1 0x42 PUSH1 0xFF ADD
             from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
             gas: 50,
             nonce: 0,
             to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
             value: uint!("0"),
-        }).is_ok());
+        }), Ok(OperationResult { data: vec![], revert: false, remaining_gas: 41 }));
     }
 
     #[test]
