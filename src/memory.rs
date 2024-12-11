@@ -23,9 +23,14 @@ impl Memory {
         if self.size() >= offset + size { 0_usize } else { (((offset + size - self.size() - 1) >> 5) + 1) << 5 }
     }
 
-    fn extension_cost(extension_size: usize) -> usize {
-        let memory_size_word = (extension_size + 31) / 32;
-        memory_size_word.pow(2) / 512 + (3 * memory_size_word)
+    fn memory_cost(memory_byte_size: usize) -> usize {
+        let memory_size_word = (memory_byte_size + 31) >> 5;
+        (memory_size_word.pow(2) >> 9) + (3 * memory_size_word)
+    }
+
+    fn memory_expansion_cost(&self, last_memory_byte_size: usize) -> usize {
+        let new_memory_byte_size = self.size();
+        Memory::memory_cost(new_memory_byte_size) - Memory::memory_cost(last_memory_byte_size)
     }
 
     pub fn size(&self) -> usize {
@@ -46,15 +51,17 @@ impl Memory {
 
     pub fn store_byte(&mut self, offset: u256, value: u256) -> Result<ReadWriteOperation<()>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, U256::ONE)?;
+        let last_memory_byte_size = self.size();
         let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
         self.0[offset] = (value & 0xFF).try_into().unwrap();
-        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result: () })
+        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: self.memory_expansion_cost(last_memory_byte_size), result: () })
     }
 
     pub fn store_word(&mut self, offset: u256, mut value: u256) -> Result<ReadWriteOperation<()>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, u256::from(32_u8))?;
+        let last_memory_byte_size = self.size();
         let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
@@ -62,22 +69,24 @@ impl Memory {
             self.0[offset + 31 - i] = (value & 0xFF).try_into().unwrap();
             value >>= 8;
         }
-        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result: () })
+        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: self.memory_expansion_cost(last_memory_byte_size), result: () })
     }
 
     pub fn store(&mut self, offset: u256, size: u256, value: Vec<u8>) -> Result<ReadWriteOperation<()>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, size)?;
+        let last_memory_byte_size = self.size();
         let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
         for i in 0..size {
             self.0[offset + i] = *value.get(i).unwrap_or(&0_u8);
         }
-        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result: () })
+        Ok(ReadWriteOperation::<()> { offset, size, extension_size, extension_cost: self.memory_expansion_cost(last_memory_byte_size), result: () })
     }
 
     pub fn load_word(&mut self, offset: u256) -> Result<ReadWriteOperation<u256>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, u256::from(32_u8))?;
+        let last_memory_byte_size = self.size();
         let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
@@ -89,11 +98,12 @@ impl Memory {
                 None => 0,
             });
         }
-        Ok(ReadWriteOperation::<u256> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result })
+        Ok(ReadWriteOperation::<u256> { offset, size, extension_size, extension_cost: self.memory_expansion_cost(last_memory_byte_size), result })
     }
 
     pub fn load(&mut self, offset: u256, size: u256) -> Result<ReadWriteOperation<Vec<u8>>, Error> {
         let (offset, size) = Memory::try_offset_size(offset, size)?;
+        let last_memory_byte_size = self.size();
         let extension_size = self.extension_size(offset, size);
         self.0.append(&mut vec![0; extension_size]);
 
@@ -101,7 +111,7 @@ impl Memory {
         for i in 0..size {
             result.push(*self.0.get(offset + i).unwrap_or(&0_u8));
         }
-        Ok(ReadWriteOperation::<Vec<u8>> { offset, size, extension_size, extension_cost: Memory::extension_cost(extension_size), result })
+        Ok(ReadWriteOperation::<Vec<u8>> { offset, size, extension_size, extension_cost: self.memory_expansion_cost(last_memory_byte_size), result })
     }
 }
 
