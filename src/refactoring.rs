@@ -52,7 +52,7 @@ impl CallContext {
         let contract = CallContextContract {
             address: contract_address,
             caller: tx.from,
-            code: if tx.to == Address(U256::ZERO) { contract_input.clone() } else { s.accounts.load(contract_address).value.code },
+            code: if tx.is_contract_creation() { contract_input.clone() } else { s.accounts.load(contract_address).value.code },
             gas: tx.gas,
             input: contract_input.clone(),
             logs: Vec::default(),
@@ -1501,7 +1501,7 @@ mod tests {
             gas: 0,
             gas_price: 0,
             nonce: 0,
-            to: Address(U256::ZERO),
+            to: Address::default(),
             value: U256::ZERO,
         });
 
@@ -1659,7 +1659,7 @@ mod tests {
             gas: 0,
             gas_price: 15,
             nonce: 0,
-            to: Address(U256::ZERO),
+            to: Address::default(),
             value: U256::ZERO,
         });
 

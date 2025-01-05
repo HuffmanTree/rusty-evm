@@ -50,7 +50,7 @@ pub struct Block {
 impl Transaction {
     pub fn contract_address(&self) -> Address {
         let Self { mut from, mut nonce, to, .. } = self;
-        if to.0 == U256::ZERO { // keccak256(rlp([sender, nonce]))
+        if self.is_contract_creation() { // keccak256(rlp([sender, nonce]))
             let mut from_vec: Vec<u8> = vec![];
             for _ in 0..20 {
                 from_vec.push((from.0 & 0xFF).try_into().unwrap());
@@ -69,6 +69,10 @@ impl Transaction {
         } else {
             *to
         }
+    }
+
+    pub fn is_contract_creation(&self) -> bool {
+        self.to.0 == U256::ZERO
     }
 }
 
@@ -105,6 +109,28 @@ mod tests {
         assert_eq!(transaction.nonce, 7);
         assert_eq!(transaction.contract_address(), Address(uint!("0xD0CB8E86E90C8170565878A666070ADD140B39D3"))); // keccak256(rlp([from, nonce]))
         assert_eq!(transaction.nonce, 7);
+    }
+
+    #[test]
+    fn is_contract_creation() {
+        assert!(!Transaction {
+            data: Default::default(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            gas_price: 1,
+            to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0D")),
+            nonce: 0,
+            value: uint!("4"),
+        }.is_contract_creation());
+        assert!(Transaction {
+            data: Default::default(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            gas_price: 1,
+            to: Address::default(),
+            nonce: 0,
+            value: uint!("4"),
+        }.is_contract_creation());
     }
 
     #[test]
