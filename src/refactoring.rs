@@ -46,19 +46,30 @@ pub struct CallContext {
 }
 
 impl CallContext {
-    fn from_transaction(s: &mut WorldState, tx: &Transaction) -> Self {
+    fn from_transaction(s: &mut WorldState, tx: &Transaction) -> Result<Self, Error> {
+        let intrinsic_cost = 21000 +
+            if tx.is_contract_creation() { 32000 } else { 0 } +
+            tx.data.iter().map(|b| if *b == 0 { 4 } else { 16 }).sum::<usize>();
+
+        if tx.gas < intrinsic_cost { return Err(Error::IntrisicGasTooLow(intrinsic_cost)) };
+
+        let sender_balance = s.accounts.load(tx.from).value.balance;
+        let actual_cost = (tx.gas * tx.gas_price).as_u256() + tx.value;
+
+        if sender_balance < actual_cost { return Err(Error::InsufficientFunds(actual_cost)) };
+
         let contract_address = tx.contract_address();
         let contract_input = &tx.data;
         let contract = CallContextContract {
             address: contract_address,
             caller: tx.from,
             code: if tx.is_contract_creation() { contract_input.clone() } else { s.accounts.load(contract_address).value.code },
-            gas: tx.gas,
+            gas: tx.gas - intrinsic_cost,
             input: contract_input.clone(),
             logs: Vec::default(),
             value: tx.value,
         };
-        Self {
+        Ok(Self {
             contract,
             memory: Memory::new(),
             pc: 0,
@@ -68,7 +79,7 @@ impl CallContext {
             stack: Stack::new(),
             stop: false,
             transient: Transient::new(),
-        }
+        })
     }
 }
 
@@ -828,7 +839,7 @@ impl Machine {
     }
 
     pub fn execute_transaction(s: &mut WorldState, tctx: &TransactionContext) -> ExecutionResult {
-        let cctx = &mut CallContext::from_transaction(s, &tctx.tx);
+        let cctx = &mut CallContext::from_transaction(s, &tctx.tx)?;
 
         // TODO (fguerin - 22/12/2024) Handle sub-context creations
         while !cctx.stop {
