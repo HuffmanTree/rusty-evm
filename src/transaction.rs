@@ -74,12 +74,43 @@ impl Transaction {
     pub fn is_contract_creation(&self) -> bool {
         self.to.0 == U256::ZERO
     }
+
+    pub fn intrinsic_gas_cost(&self) -> usize {
+        21000 +
+            if self.is_contract_creation() { 32000 } else { 0 } +
+            self.data.iter().map(|b| if *b == 0 { 4 } else { 16 }).sum::<usize>()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use ethnum::uint;
     use super::*;
+
+    #[test]
+    fn intrinsic_gas_cost() {
+        let tx1 = Transaction {
+            data: hex::decode("4200").unwrap(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            gas_price: 1,
+            to: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0D")),
+            nonce: 0,
+            value: uint!("4"),
+        };
+        assert_eq!(tx1.intrinsic_gas_cost(), 21020);
+
+        let tx2 = Transaction {
+            data: hex::decode("42002025").unwrap(),
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 1,
+            gas_price: 1,
+            to: Address(uint!("0")),
+            nonce: 7,
+            value: uint!("4"),
+        };
+        assert_eq!(tx2.intrinsic_gas_cost(), 53052);
+    }
 
     #[test]
     fn contract_address() {
