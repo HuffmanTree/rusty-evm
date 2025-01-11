@@ -2,7 +2,7 @@ use ethnum::{u256, U256};
 use rlp::RlpStream;
 use crate::utils::Hash;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Account {
     pub balance: u256,
     pub code: Vec<u8>,
