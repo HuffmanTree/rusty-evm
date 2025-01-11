@@ -1,7 +1,12 @@
 use ethnum::{u256, U256};
 use rlp::RlpStream;
-
 use crate::utils::Hash;
+
+#[derive(Debug, Default, Clone)]
+pub struct Account {
+    pub balance: u256,
+    pub code: Vec<u8>,
+}
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Address(pub u256);
@@ -13,18 +18,20 @@ impl std::fmt::Debug for Address {
 }
 
 impl TryInto::<Address> for u256 {
-    type Error = crate::errors::Error;
+    type Error = crate::blockchain::errors::Error;
 
     fn try_into(self) -> Result<Address, Self::Error> {
-        if self >> 160 != U256::ZERO { Err(crate::errors::Error::InvalidAddress) } else { Ok(Address(self)) }
+        if self >> 160 != U256::ZERO { Err(Self::Error::InvalidAddress) } else { Ok(Address(self)) }
     }
 }
 
-
-#[derive(Debug, Default, Clone)]
-pub struct Account {
-    pub balance: u256,
-    pub code: Vec<u8>,
+#[derive(Default)]
+pub struct Block {
+    pub difficulty: u256,
+    pub gas_limit: u256,
+    pub miner: Address,
+    pub number: u256,
+    pub time: u256,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -36,15 +43,6 @@ pub struct Transaction {
     pub nonce: usize,
     pub to: Address,
     pub value: u256,
-}
-
-#[derive(Default)]
-pub struct Block {
-    pub difficulty: u256,
-    pub gas_limit: u256,
-    pub miner: Address,
-    pub number: u256,
-    pub time: u256,
 }
 
 impl Transaction {
@@ -166,7 +164,7 @@ mod tests {
 
     #[test]
     fn u256_try_into_address() {
-        assert_eq!(TryInto::<Address>::try_into(uint!("0x372BDB7F2E599AD23590DAEAF0490D46185BEC962CAC93120B52389748E99C0C")), Err(crate::errors::Error::InvalidAddress));
+        assert_eq!(TryInto::<Address>::try_into(uint!("0x372BDB7F2E599AD23590DAEAF0490D46185BEC962CAC93120B52389748E99C0C")), Err(crate::blockchain::errors::Error::InvalidAddress));
         assert_eq!(TryInto::<Address>::try_into(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), Ok(Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C"))));
     }
 }

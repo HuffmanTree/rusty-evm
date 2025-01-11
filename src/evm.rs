@@ -1,6 +1,10 @@
-use std::collections::HashMap;
 use ethnum::u256;
-use crate::{refactoring::{ExecutionResult, Machine, TransactionContext, WorldState}, storage::Storage, transaction::{Account, Address, Block, Transaction}};
+use crate::blockchain::WorldState;
+use crate::blockchain::storage::Storage;
+use crate::blockchain::primitives::{Account, Address, Block, Transaction};
+use crate::machine::{ExecutionResult, Machine};
+use crate::machine::context::TransactionContext;
+use std::collections::HashMap;
 
 struct EvmParameters {
     accounts: HashMap::<Address, Account>,
@@ -32,9 +36,9 @@ impl Evm {
 #[cfg(test)]
 mod tests {
     use ethnum::uint;
-
-    use crate::{errors::Error, refactoring::ExecutionOutput, storage::StorageValue};
-
+    use crate::blockchain::errors::Error;
+    use crate::blockchain::storage::StorageValue;
+    use crate::machine::ExecutionOutput;
     use super::*;
 
     impl Evm {

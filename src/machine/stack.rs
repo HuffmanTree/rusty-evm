@@ -1,6 +1,5 @@
 use ethnum::u256;
-
-use crate::errors::Error;
+use crate::blockchain::errors::Error;
 
 #[derive(Debug, Default)]
 pub struct Stack {

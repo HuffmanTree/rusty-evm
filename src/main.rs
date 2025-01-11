@@ -1,11 +1,6 @@
-mod errors;
+mod blockchain;
 mod evm;
-mod memory;
-mod stack;
-mod storage;
-mod transaction;
-mod transient;
-mod refactoring;
+mod machine;
 mod utils;
 
 fn main() {
