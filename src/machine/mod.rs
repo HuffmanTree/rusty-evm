@@ -177,13 +177,11 @@ impl Machine {
         }
     }
 
-    fn pay_intrisic_cost(s: &mut WorldState, tctx: &TransactionContext, cctx: &mut CallContext) -> Result<(), Error> {
-        let intrinsic_gas_cost = tctx.tx.intrinsic_gas_cost();
+    fn pay_gas_cost(s: &mut WorldState, tctx: &TransactionContext, cctx: &mut CallContext, gas_cost: usize) -> Result<(), Error> {
+        if cctx.contract.gas < gas_cost { cctx.contract.gas = 0; return Err(Error::OutOfGas); }
 
-        if cctx.contract.gas < intrinsic_gas_cost { return Err(Error::IntrisicGasTooLow(intrinsic_gas_cost)) };
-
-        cctx.contract.gas -= intrinsic_gas_cost;
-        s.decrease_balance(tctx.tx.from, (intrinsic_gas_cost * tctx.tx.gas_price).as_u256())?;
+        cctx.contract.gas -= gas_cost;
+        s.decrease_balance(tctx.tx.from, (gas_cost * tctx.tx.gas_price).as_u256())?;
 
         Ok(())
     }
@@ -192,10 +190,7 @@ impl Machine {
         let f = Machine::next_instruction(cctx);
         let output = f(s, tctx, cctx)?;
 
-        if cctx.contract.gas < output.cost { cctx.contract.gas = 0; return Err(Error::OutOfGas); }
-
-        cctx.contract.gas -= output.cost;
-        s.decrease_balance(tctx.tx.from, (output.cost * tctx.tx.gas_price).as_u256())?;
+        Machine::pay_gas_cost(s, tctx, cctx, output.cost)?;
         cctx.pc += output.jump;
 
         Ok(())
@@ -209,7 +204,11 @@ impl Machine {
 
         sender.check_enough_funds(max_cost)?;
 
-        Machine::pay_intrisic_cost(s, tctx, cctx)?;
+        let intrisic_gas_cost = tctx.tx.intrinsic_gas_cost();
+        Machine::pay_gas_cost(s, tctx, cctx, intrisic_gas_cost).map_err(|e| match e {
+            Error::OutOfGas => Error::IntrisicGasTooLow(intrisic_gas_cost),
+            _ => e,
+        })?;
 
         // TODO (fguerin - 22/12/2024) Handle sub-context creations
         while !cctx.stop {
