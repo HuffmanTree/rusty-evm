@@ -1,11 +1,22 @@
 use ethnum::{u256, U256};
-use rlp::RlpStream;
+use crate::blockchain::errors::Error;
 use crate::utils::Hash;
+use rlp::RlpStream;
+use std::cmp::Ordering;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Account {
     pub balance: u256,
     pub code: Vec<u8>,
+}
+
+impl Account {
+    pub fn check_enough_funds(&self, cost: u256) -> Result<u256, Error> {
+        match self.balance.cmp(&cost) {
+            Ordering::Less => Err(Error::InsufficientFunds(cost)),
+            _ => Ok(self.balance - cost),
+        }
+    }
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -84,6 +95,18 @@ impl Transaction {
 mod tests {
     use ethnum::uint;
     use super::*;
+
+    #[test]
+    fn check_enough_funds() {
+        assert_eq!(Account {
+            balance: uint!("1"),
+            code: vec![],
+        }.check_enough_funds(uint!("2")), Err(Error::InsufficientFunds(uint!("2"))));
+        assert_eq!(Account {
+            balance: uint!("5"),
+            code: vec![],
+        }.check_enough_funds(uint!("2")), Ok(uint!("3")));
+    }
 
     #[test]
     fn intrinsic_gas_cost() {

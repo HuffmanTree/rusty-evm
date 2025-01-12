@@ -6,6 +6,7 @@ use ethnum::u256;
 use crate::blockchain::errors::Error;
 use crate::blockchain::primitives::{Account, Address};
 use crate::blockchain::storage::Storage;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -20,11 +21,7 @@ impl WorldState {
         let account = self.accounts.load(address).value;
 
         self.accounts.store(address, Account {
-            balance: if account.balance < cost {
-                return Err(Error::InsufficientFunds(cost))
-            } else {
-                account.balance - cost
-            },
+            balance: account.check_enough_funds(cost)?,
             code: account.code,
         });
 

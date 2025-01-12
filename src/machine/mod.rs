@@ -177,12 +177,13 @@ impl Machine {
         }
     }
 
-    fn check_intrisic_cost(tctx: &TransactionContext, cctx: &mut CallContext) -> Result<(), Error> {
-        let intrinsic_cost = tctx.tx.intrinsic_gas_cost();
+    fn pay_intrisic_cost(s: &mut WorldState, tctx: &TransactionContext, cctx: &mut CallContext) -> Result<(), Error> {
+        let intrinsic_gas_cost = tctx.tx.intrinsic_gas_cost();
 
-        if cctx.contract.gas < intrinsic_cost { return Err(Error::IntrisicGasTooLow(intrinsic_cost)) };
+        if cctx.contract.gas < intrinsic_gas_cost { return Err(Error::IntrisicGasTooLow(intrinsic_gas_cost)) };
 
-        cctx.contract.gas -= intrinsic_cost;
+        cctx.contract.gas -= intrinsic_gas_cost;
+        s.decrease_balance(tctx.tx.from, (intrinsic_gas_cost * tctx.tx.gas_price).as_u256())?;
 
         Ok(())
     }
@@ -194,6 +195,7 @@ impl Machine {
         if cctx.contract.gas < output.cost { cctx.contract.gas = 0; return Err(Error::OutOfGas); }
 
         cctx.contract.gas -= output.cost;
+        s.decrease_balance(tctx.tx.from, (output.cost * tctx.tx.gas_price).as_u256())?;
         cctx.pc += output.jump;
 
         Ok(())
@@ -202,12 +204,12 @@ impl Machine {
     pub fn execute_transaction(s: &mut WorldState, tctx: &TransactionContext) -> ExecutionResult {
         let cctx = &mut CallContext::from_transaction(s, &tctx.tx);
 
-        Machine::check_intrisic_cost(tctx, cctx)?;
+        let sender = s.accounts.load(tctx.tx.from).value;
+        let max_cost = (tctx.tx.gas * tctx.tx.gas_price).as_u256() + tctx.tx.value;
 
-        let sender_balance = s.accounts.load(tctx.tx.from).value.balance;
-        let actual_cost = (tctx.tx.gas * tctx.tx.gas_price).as_u256() + tctx.tx.value;
+        sender.check_enough_funds(max_cost)?;
 
-        if sender_balance < actual_cost { return Err(Error::InsufficientFunds(actual_cost)) };
+        Machine::pay_intrisic_cost(s, tctx, cctx)?;
 
         // TODO (fguerin - 22/12/2024) Handle sub-context creations
         while !cctx.stop {
