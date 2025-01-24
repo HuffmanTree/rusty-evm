@@ -6,6 +6,7 @@ pub mod transient;
 
 use ethnum::AsU256;
 
+use crate::blockchain::primitives::Account;
 use crate::blockchain::WorldState;
 use crate::blockchain::errors::Error;
 use crate::machine::context::{CallContext, TransactionContext};
@@ -213,6 +214,15 @@ impl Machine {
         // TODO (fguerin - 22/12/2024) Handle sub-context creations
         while !cctx.stop {
             Machine::execute_next_opcode(s, tctx, cctx)?;
+        }
+
+        if tctx.tx.is_contract_creation() {
+            Machine::pay_gas_cost(s, tctx, cctx, 200 * cctx.r#return.clone().len())?; // code deposit cost
+            s.accounts.store(cctx.contract.address, Account {
+                balance: tctx.tx.value,
+                code: cctx.r#return.clone(),
+            });
+            s.decrease_balance(tctx.tx.from, tctx.tx.value)?;
         }
 
         Ok(ExecutionOutput {
