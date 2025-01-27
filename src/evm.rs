@@ -52,6 +52,15 @@ mod tests {
                 });
             }
         }
+
+        fn with_storage(&mut self, storage: &[(Address, (u256, u256))]) {
+            self.0.storage = Default::default();
+            for (address, (key, value)) in storage {
+                let mut m = HashMap::<u256, u256>::new();
+                m.insert(*key, *value);
+                self.0.storage.insert(*address, Storage::new(m));
+            }
+        }
     }
 
     #[test]
@@ -260,5 +269,33 @@ mod tests {
             evm.0.storage.get(&Address(uint!("0xDBCD4009C9B9D36CC85256A8377A034C24CE0044"))).unwrap().0.get(&uint!("0")).unwrap().value,
             uint!("42"),
         );
+    }
+
+    #[test]
+    fn minimal_getter() {
+        /*
+         * pragma solidity 0.8.28;
+         *
+         * contract MinimalGetter {
+         *     uint256 public x;
+         * }
+         */
+        let mut evm = Evm::default();
+
+        evm.with_accounts(&[
+            (Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")), Account { balance: 30000000u32.into(), code: vec![] }),
+            (Address(uint!("0xDBCD4009C9B9D36CC85256A8377A034C24CE0044")), Account { balance: 0u32.into(), code: hex::decode("6080604052348015600e575f5ffd5b50600436106026575f3560e01c80630c55699c14602a575b5f5ffd5b60306044565b604051603b9190605f565b60405180910390f35b5f5481565b5f819050919050565b6059816049565b82525050565b5f60208201905060705f8301846052565b9291505056fea2646970667358221220171f35b11c38603a11e2912f5d707b49fcc171fd56709fceac65c92f674d6e0f64736f6c634300081c0033").unwrap() }) // `code` contains the runtime code
+        ]);
+        evm.with_storage(&[(Address(uint!("0xDBCD4009C9B9D36CC85256A8377A034C24CE0044")), (uint!("0"), uint!("0x0F")))]);
+
+        assert_eq!(evm.run(Block::default(), Transaction {
+            data: vec![/* begin function selector */ 0x0c, 0x55, 0x69, 0x9c /* end function selector */],
+            from: Address(uint!("0xF0490D46185BEC962CAC93120B52389748E99C0C")),
+            gas: 138796,
+            gas_price: 50,
+            nonce: 0,
+            to: Address(uint!("0xDBCD4009C9B9D36CC85256A8377A034C24CE0044")),
+            value: uint!("0"),
+        }), Ok(ExecutionOutput { data: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0F], remaining_gas: 115330, revert: false }));
     }
 }
