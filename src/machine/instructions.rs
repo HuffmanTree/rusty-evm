@@ -11,8 +11,7 @@ pub struct InstructionOutput {
     pub jump: usize,
 }
 
-type InstructionResult = Result<InstructionOutput, Error>;
-pub type InstructionFn = fn (&mut WorldState, &TransactionContext, &mut CallContext) -> InstructionResult;
+pub type InstructionResult = Result<InstructionOutput, Error>;
 
 pub struct Instructions {}
 
