@@ -332,8 +332,12 @@ impl Instructions {
         Ok(InstructionOutput { cost: 3 + 3 * ((size + 31) >> 5) + extension_cost, jump: 1 })
     }
 
-    pub fn extcodehash(_s: &mut WorldState, _tctx: &TransactionContext, _cctx: &mut CallContext) -> InstructionResult {
-        todo!();
+    pub fn extcodehash(s: &mut WorldState, _tctx: &TransactionContext, cctx: &mut CallContext) -> InstructionResult {
+        // TODO (fguerin - 22/02/2025) Implement other subtleties
+        let [address] = Instructions::pop_or_fail(cctx)?;
+        let account = s.accounts.load(address.try_into()?);
+        Instructions::push_rev_or_fail(cctx, [account.value.code.keccak256()])?;
+        Ok(InstructionOutput { cost: if account.warm { 100 } else { 2600 }, jump: 1 })
     }
 
     pub fn blockhash(_s: &mut WorldState, _tctx: &TransactionContext, _cctx: &mut CallContext) -> InstructionResult {
@@ -1479,6 +1483,32 @@ mod tests {
         cctx.with_stack(vec![32u8, 31, 1]);
         assert_eq!(Instructions::returndatacopy(&mut WorldState::default(), &TransactionContext::default(), cctx), Ok(InstructionOutput { cost: 9, jump: 1 }));
         assert_eq!(cctx.memory.0, hex::decode("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000000000000000000000000000000000").unwrap());
+    }
+
+    #[test]
+    fn extcodehash() {
+        let state = &mut WorldState::default();
+        let cctx = &mut CallContext::default();
+
+        state.with_accounts(&[
+            (Address(uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")), Account { balance: uint!("125985"), code: vec![] }),
+            (Address(uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")), Account { balance: uint!("125985"), code: vec![0xF0, 0xBD, 0x5A, 0x61, 0x9C, 0xAD, 0x26, 0x29] }),
+        ]);
+
+        cctx.with_stack(vec![uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")]);
+
+        assert_eq!(Instructions::extcodehash(state, &TransactionContext::default(), cctx), Ok(InstructionOutput { cost: 2600, jump: 1 }));
+        assert_eq!(Instructions::pop_or_fail(cctx).unwrap(), [uint!("0xC5D2460186F7233C927E7DB2DCC703C0E500B653CA82273B7BFAD8045D85A470")]);
+
+        cctx.with_stack(vec![uint!("0xF778B86FA74E846C4F0A1FBD1335FE81C00A0C91")]);
+
+        assert_eq!(Instructions::extcodehash(state, &TransactionContext::default(), cctx), Ok(InstructionOutput { cost: 2600, jump: 1 }));
+        assert_eq!(Instructions::pop_or_fail(cctx).unwrap(), [uint!("0xE88A3F7420AC15E5F28B6260FF05BF4700AA744BC3C0C3F801C9EBC65AC260CA")]);
+
+        cctx.with_stack(vec![uint!("0x9BBFED6889322E016E0A02EE459D306FC19545D8")]);
+
+        assert_eq!(Instructions::extcodehash(state, &TransactionContext::default(), cctx), Ok(InstructionOutput { cost: 100, jump: 1 }));
+        assert_eq!(Instructions::pop_or_fail(cctx).unwrap(), [uint!("0xC5D2460186F7233C927E7DB2DCC703C0E500B653CA82273B7BFAD8045D85A470")]);
     }
 
     #[test]
