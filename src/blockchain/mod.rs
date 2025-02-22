@@ -6,7 +6,6 @@ use ethnum::u256;
 use crate::blockchain::errors::Error;
 use crate::blockchain::primitives::{Account, Address};
 use crate::blockchain::storage::Storage;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[derive(Default)]
